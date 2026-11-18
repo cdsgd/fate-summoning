@@ -1,12 +1,15 @@
 /**
  * Fan-made summoning affinity model. Profiles, answers and readings are original
  * interpretations, not official character parameters or psychological measures.
- * Each answer contributes signed -2..2 weights. All six axes are normalized
- * against the actual minimum/maximum attainable values of the question bank.
+ * Displayed axes use attainable minimum/maximum values. Matching compares
+ * player and character answer directions on a shared questionnaire scale.
  * Four identity chapters use original thought experiments; aesthetic preferences
  * remain optional, low-weight signals.
  */
+import { createAffinityMatcher, MATCH_MODEL_VERSION } from './matching.js';
+
 export const STORAGE_KEY = 'fate-summoning-contract-v9';
+export const MATCHING_VERSION = MATCH_MODEL_VERSION;
 export const SCENARIO_NOTE = '24个选择分成四章。七道历史战争题都由故事当事人亲自作出选择并承担后果；各题是独立的可能处境，不预设上一题的决定。三道爱情题、三道可略过的审美题与两道量表提供其他线索。';
 
 export const AXES = [
@@ -1831,13 +1834,15 @@ export const SERVANTS = [
   }),
 ];
 
+const matchAnswers = createAffinityMatcher(QUESTIONS, SERVANTS);
+
 /**
  * Weighted, deterministic profile matching for an entertainment questionnaire.
  * Neutral cultural responses are omitted from both weighted totals and each
  * axis's attainable range. They are not evidence for a middle/low personality.
  * Core questions and attitude scales use their declared weights; cultural
  * choices contribute only supplementary, lower-weight signals.
- * A resonance index measures profile distance, not a summoning probability.
+ * A resonance index measures calibrated direction distance, not probability.
  * @param {number[]} answers One valid option index for each question in the bank.
  */
 export function calculateResult(answers) {
@@ -1862,10 +1867,7 @@ export function calculateResult(answers) {
     if (max === min) return 50;
     return Math.max(0, Math.min(100, Math.round(100 * (totals[axis] - min) / (max - min))));
   });
-  const ranked = SERVANTS.map(s => ({
-    servant: s,
-    distance: Math.sqrt(s.profile.reduce((sum, value, axis) => sum + ((value - scores[axis]) / 100) ** 2, 0) / AXES.length),
-  })).sort((a, b) => a.distance - b.distance || a.servant.id.localeCompare(b.servant.id, 'en'));
+  const { ranked, weakSignal } = matchAnswers(answers);
   const best = ranked[0].servant;
 
   const tendencies = {
@@ -2076,6 +2078,8 @@ export function calculateResult(answers) {
     return `${quote}${link}${e.category === 'culture' ? '不过，这只是一点作品偏好的呼应，不会单凭这一题定下结果。' : ''}`;
   });
   return {
+    modelVersion: MATCHING_VERSION,
+    weakSignal,
     scores,
     best,
     runnersUp: ranked.slice(1, 3).map(item => item.servant),

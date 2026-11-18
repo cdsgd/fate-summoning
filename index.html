@@ -193,16 +193,124 @@
   <dialog id="modal" class="modal"><div id="modal-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <noscript><div class="noscript">这场召唤需要启用浏览器的 JavaScript。启用后，请重新打开页面。</div></noscript>
+  <script>const FateMatching = (() => {
+/**
+ * Compare answer directions in the space this questionnaire can actually produce.
+ * Character profiles describe semantic preferences, not attainable quiz scores.
+ * Centre answers against the options actually offered, then remove correlations
+ * between the six axes using the question bank's shared covariance matrix. This
+ * is a single Fisher-scoring step for a weighted softmax choice model at neutral
+ * preference. Compare the resulting semantic direction with character directions;
+ * vector length cannot give profiles near the centre an automatic advantage.
+ * No random draws, per-character offsets, observed-user data or result quotas.
+ */
+const MATCH_MODEL_VERSION = 'semantic-direction-v10';
+
+const dot = (a, b) => a.reduce((sum, value, axis) => sum + value * b[axis], 0);
+const unit = vector => {
+  const length = Math.hypot(...vector);
+  return length > 1e-12 ? vector.map(value => value / length) : vector.map(() => 0);
+};
+
+function inverse(matrix) {
+  const size = matrix.length;
+  // A relative numerical stabilizer also supports a future rank-deficient bank.
+  // It is shared by every character and scales with question-weight units.
+  const scale = matrix.reduce((sum, row, axis) => sum + row[axis], 0) / size || 1;
+  const augmented = matrix.map((row, i) => [
+    ...row.map((value, j) => value + (i === j ? scale * 1e-9 : 0)),
+    ...row.map((_, j) => Number(i === j)),
+  ]);
+  for (let column = 0; column < size; column++) {
+    let pivot = column;
+    for (let row = column + 1; row < size; row++) {
+      if (Math.abs(augmented[row][column]) > Math.abs(augmented[pivot][column])) pivot = row;
+    }
+    [augmented[column], augmented[pivot]] = [augmented[pivot], augmented[column]];
+    const divisor = augmented[column][column];
+    augmented[column] = augmented[column].map(value => value / divisor);
+    for (let row = 0; row < size; row++) {
+      if (row === column) continue;
+      const factor = augmented[row][column];
+      augmented[row] = augmented[row].map((value, j) => value - factor * augmented[column][j]);
+    }
+  }
+  return augmented.map(row => row.slice(size));
+}
+
+function createAffinityMatcher(questions, servants) {
+  const dimensions = servants[0].profile.length;
+  const zeros = () => Array(dimensions).fill(0);
+  const directions = servants.map(s => unit(s.profile.map(value => (value - 50) / 50)));
+  const statistics = questions.map(q => {
+    const options = q.options.filter(option => !option.neutral);
+    const mean = zeros().map((_, axis) =>
+      options.reduce((sum, option) => sum + option.scores[axis], 0) / options.length);
+    const variance = zeros().map((_, axis) =>
+      options.reduce((sum, option) => sum + (option.scores[axis] - mean[axis]) ** 2, 0) / options.length);
+    const covariance = zeros().map((_, a) => zeros().map((_, b) =>
+      options.reduce((sum, option) => sum +
+        (option.scores[a] - mean[a]) * (option.scores[b] - mean[b]), 0) / options.length));
+    return { mean, variance, covariance };
+  });
+
+  // Only optional neutral choices change the active set (eight sets today).
+  const contexts = new Map();
+  function contextFor(active) {
+    const key = active.map(value => value ? '1' : '0').join('');
+    if (contexts.has(key)) return contexts.get(key);
+    const mean = zeros(), variance = zeros(), covariance = zeros().map(zeros);
+    questions.forEach((q, i) => {
+      if (!active[i]) return;
+      const stats = statistics[i];
+      for (let axis = 0; axis < dimensions; axis++) {
+        mean[axis] += stats.mean[axis] * q.weight;
+        variance[axis] += stats.variance[axis] * q.weight ** 2;
+        for (let b = 0; b < dimensions; b++) covariance[axis][b] += stats.covariance[axis][b] * q.weight;
+      }
+    });
+    const deviation = variance.map(value => Math.sqrt(value) || 1);
+    const context = { mean, deviation, transform: inverse(covariance) };
+    contexts.set(key, context);
+    return context;
+  }
+
+  return function match(answers) {
+    const active = questions.map((q, i) => !q.options[answers[i]].neutral);
+    const totals = zeros();
+    questions.forEach((q, i) => {
+      if (!active[i]) return;
+      q.options[answers[i]].scores.forEach((value, axis) => { totals[axis] += value * q.weight; });
+    });
+    const { mean, deviation, transform } = contextFor(active);
+    const delta = totals.map((value, axis) => value - mean[axis]);
+    const standardized = totals.map((value, axis) => (value - mean[axis]) / deviation[axis]);
+    const strength = Math.hypot(...standardized);
+    const direction = unit(transform.map(row => dot(row, delta)));
+    const ranked = servants.map((servant, i) => {
+      const similarity = Math.max(-1, Math.min(1, dot(direction, directions[i])));
+      // Half the chord length of two unit vectors: bounded from 0 to 1.
+      return { servant, distance: Math.sqrt(Math.max(0, 2 - 2 * similarity)) / 2 };
+    }).sort((a, b) => a.distance - b.distance || a.servant.id.localeCompare(b.servant.id, 'en'));
+    return { ranked, weakSignal: strength < 1 };
+  };
+}
+
+return {createAffinityMatcher, MATCH_MODEL_VERSION};
+})();</script>
   <script>const FateData = (() => {
 /**
  * Fan-made summoning affinity model. Profiles, answers and readings are original
  * interpretations, not official character parameters or psychological measures.
- * Each answer contributes signed -2..2 weights. All six axes are normalized
- * against the actual minimum/maximum attainable values of the question bank.
+ * Displayed axes use attainable minimum/maximum values. Matching compares
+ * player and character answer directions on a shared questionnaire scale.
  * Four identity chapters use original thought experiments; aesthetic preferences
  * remain optional, low-weight signals.
  */
+const { createAffinityMatcher, MATCH_MODEL_VERSION } = FateMatching;
+
 const STORAGE_KEY = 'fate-summoning-contract-v9';
+const MATCHING_VERSION = MATCH_MODEL_VERSION;
 const SCENARIO_NOTE = '24个选择分成四章。七道历史战争题都由故事当事人亲自作出选择并承担后果；各题是独立的可能处境，不预设上一题的决定。三道爱情题、三道可略过的审美题与两道量表提供其他线索。';
 
 const AXES = [
@@ -2027,13 +2135,15 @@ const SERVANTS = [
   }),
 ];
 
+const matchAnswers = createAffinityMatcher(QUESTIONS, SERVANTS);
+
 /**
  * Weighted, deterministic profile matching for an entertainment questionnaire.
  * Neutral cultural responses are omitted from both weighted totals and each
  * axis's attainable range. They are not evidence for a middle/low personality.
  * Core questions and attitude scales use their declared weights; cultural
  * choices contribute only supplementary, lower-weight signals.
- * A resonance index measures profile distance, not a summoning probability.
+ * A resonance index measures calibrated direction distance, not probability.
  * @param {number[]} answers One valid option index for each question in the bank.
  */
 function calculateResult(answers) {
@@ -2058,10 +2168,7 @@ function calculateResult(answers) {
     if (max === min) return 50;
     return Math.max(0, Math.min(100, Math.round(100 * (totals[axis] - min) / (max - min))));
   });
-  const ranked = SERVANTS.map(s => ({
-    servant: s,
-    distance: Math.sqrt(s.profile.reduce((sum, value, axis) => sum + ((value - scores[axis]) / 100) ** 2, 0) / AXES.length),
-  })).sort((a, b) => a.distance - b.distance || a.servant.id.localeCompare(b.servant.id, 'en'));
+  const { ranked, weakSignal } = matchAnswers(answers);
   const best = ranked[0].servant;
 
   const tendencies = {
@@ -2272,6 +2379,8 @@ function calculateResult(answers) {
     return `${quote}${link}${e.category === 'culture' ? '不过，这只是一点作品偏好的呼应，不会单凭这一题定下结果。' : ''}`;
   });
   return {
+    modelVersion: MATCHING_VERSION,
+    weakSignal,
     scores,
     best,
     runnersUp: ranked.slice(1, 3).map(item => item.servant),
@@ -2286,7 +2395,7 @@ function calculateResult(answers) {
   };
 }
 
-return {AXES, STAGES, QUESTIONS, SERVANTS, SOURCES, STORAGE_KEY, calculateResult};
+return {AXES, STAGES, QUESTIONS, SERVANTS, SOURCES, STORAGE_KEY, MATCHING_VERSION, calculateResult};
 })();</script>
   <script>const FateArt = (() => {
 /* Original decorative artwork for this unofficial Fate-inspired fan experience.
@@ -3453,7 +3562,8 @@ function renderResult() {
   setView('result',`<section class="shell result-shell" aria-labelledby="result-name"><div class="result-topline"><p class="eyebrow">SERVANT ACQUIRED / 灵基登录完成</p><button class="quiet-button" data-action="archive">灵基图鉴 ↗</button></div><div class="result-layout"><div class="summon-card rarity-${s.game?.rarity||1}" aria-label="${esc(s.class)}，${esc(s.name)}的从者卡">${portraitImage(s,'servant-portrait')}<div class="card-head"><span>${esc(s.class.toUpperCase())}</span>${classIcon(s.class)}</div><div class="card-name"><small>${esc(s.en.toUpperCase())}</small><strong>${esc(s.name)}</strong><div class="card-stars" aria-label="FGO初始稀有度${s.game?.rarity||1}星">${rarityStars(s)}</div><div class="card-version">FGO 初始灵基展示</div></div></div><div class="result-copy"><p class="stage-label">${esc(state.name||'旅人')}，与你最契合的英灵是</p><h1 id="result-name">${esc(s.name)}</h1><p class="english-name">${esc(s.en)} / ${esc(s.class)}</p><p class="result-lede">${esc(s.summary)}</p><blockquote class="contract-line">${esc(s.quote)}<small>契约注记 · 本作原创相性解读</small></blockquote><div class="resonance"><span class="resonance-number">${result.resonance}<small>/100</small></span><span class="resonance-copy"><strong>你与英灵 · 共鸣指数</strong><span>由你的选择形成，非游戏召唤概率</span></span></div><div class="result-actions"><button class="primary" data-action="share">保存召唤档案 <span class="arrow" aria-hidden="true">↓</span></button><button class="text-button" data-action="scroll-history">查看宝具与原型 ↘</button></div><div class="result-contract-hud">${commandSealSVG('seal')}<span>${QUESTIONS.length} 次选择，形成这次相遇<br>职阶：<strong>${esc(s.class)}</strong> · Fate 中的召唤类别</span></div></div></div><section class="history-panel" id="history-panel" aria-label="Fate灵基与历史原型"><div class="history-panel-nav" role="tablist" aria-label="档案类别"><p class="eyebrow">SERVANT / PROFILE</p><button class="tab" id="result-fate-tab" role="tab" aria-selected="true" aria-controls="result-lore-content" data-action="result-tab" data-tab="fate">Fate 人物档案</button><button class="tab" id="result-history-tab" role="tab" aria-selected="false" aria-controls="result-lore-content" data-action="result-tab" data-tab="history" tabindex="-1">历史与传说</button></div><div class="history-panel-content" id="result-lore-content" role="tabpanel" aria-labelledby="result-fate-tab">${loreContent(s,'fate')}</div></section><div class="insights"><section><h2 class="section-heading"><small>MASTER & SERVANT</small>为何与你共鸣</h2><ul class="reason-list">${result.reasons.map((reason,i)=>`<li>${esc(reason)}${result.evidence?.[i]?`<button class="reason-trace" data-action="review-question" data-index="${result.evidence[i].questionIndex}">回看第 ${result.evidence[i].questionIndex+1} 题 ↗</button>`:''}</li>`).join('')}</ul></section><section><h2 class="section-heading"><small>MASTER AFFINITY</small>你的选择倾向</h2>${radarSVG(result.scores)}<dl class="axis-endpoints">${AXES.map(a=>`<div><dt>${esc(a.name)}</dt><dd><span>${esc(a.low)}</span><span aria-hidden="true">↔</span><span>${esc(a.high)}</span></dd></div>`).join('')}</dl><p class="radar-legend">分数越高越接近右侧描述，仅表示倾向</p></section></div><div class="runner-heading"><h2 class="section-heading"><small>OTHER RESONANCES</small>也能感知到你呼唤的从者</h2></div><div class="runner-list">${result.runnersUp.map(p=>`<button class="runner-card" data-action="detail" data-id="${esc(p.id)}">${portraitImage(p,'runner-portrait','loading="lazy"')}<span><strong>${esc(p.name)}</strong><small>${esc(p.class)} · ${esc(p.title)}</small></span><span class="runner-arrow" aria-hidden="true">↗</span></button>`).join('')}</div><div class="result-bottom"><button class="quiet-button" data-action="review">← 回看并修改选择</button><button class="quiet-button" data-action="setup">重新测试，看看另一种自己 ↗</button></div></section>`);
   const resultCopy=$('.result-copy');
   if(resultCopy){resultCopy.insertAdjacentHTML('afterbegin',resultMasterCodeHTML());resultCopy.querySelector(':scope > .stage-label').textContent='回应你召唤的英灵';}
-  if (result.nearTie && result.runnersUp.length) $('.resonance').insertAdjacentHTML('afterend', `<p class="result-match-note">${esc(result.runnersUp[0].name)}也与你十分接近。这次相遇，还有另一种可能。</p>`);
+  if (result.weakSignal) $('.resonance').insertAdjacentHTML('afterend', '<p class="result-match-note">这些选择还没有形成鲜明的整体倾向。这次回应可以作为一种可能，也可以看看下方其他英灵。</p>');
+  else if (result.nearTie && result.runnersUp.length) $('.resonance').insertAdjacentHTML('afterend', `<p class="result-match-note">${esc(result.runnersUp[0].name)}也与你十分接近。这次相遇，还有另一种可能。</p>`);
   const insights=$('.insights');const profile=$('#history-panel');if(insights&&profile)profile.before(insights);
   insights?.insertAdjacentHTML('beforebegin', personalReadingHTML());
 
@@ -3518,7 +3628,8 @@ async function createShareCard() {
     ctx.font='21px Georgia';ctx.fillStyle=gold;ctx.fillText(`${s.class.toUpperCase()}  ${rarityStars(s)}`,540,827);
     ctx.fillStyle=paper;let nameSize=46;do{ctx.font=`${nameSize}px "Noto Serif SC","SimSun",serif`;if(ctx.measureText(s.name).width<510)break;nameSize-=2;}while(nameSize>24);ctx.fillText(s.name,540,890);ctx.font='italic 20px Georgia';ctx.fillStyle=gold;ctx.fillText(s.en,540,936,510);
     ctx.font='49px Georgia';ctx.fillStyle=gold;ctx.fillText(`${snapshot.resonance} / 100`,540,1050);ctx.font='20px "Microsoft YaHei",sans-serif';ctx.fillStyle=muted;ctx.fillText('你与英灵 · 共鸣指数',540,1087);
-    if(snapshot.nearTie&&snapshot.runnersUp.length){ctx.font='17px \"Microsoft YaHei\",sans-serif';ctx.fillText(`另一个接近的回应：${snapshot.runnersUp[0].name}`,540,1115,880);}
+    if(snapshot.weakSignal){ctx.font='17px "Microsoft YaHei",sans-serif';ctx.fillText('整体倾向尚不鲜明，这次回应只是一种可能',540,1115,880);}
+    else if(snapshot.nearTie&&snapshot.runnersUp.length){ctx.font='17px \"Microsoft YaHei\",sans-serif';ctx.fillText(`另一个接近的回应：${snapshot.runnersUp[0].name}`,540,1115,880);}
     ctx.font='29px "Noto Serif SC","SimSun",serif';ctx.fillStyle=paper;wrapCanvas(ctx,s.summary,540,1146,880,39,2);
     ctx.font='19px "Microsoft YaHei",sans-serif';ctx.fillStyle=gold;ctx.fillText('因何回应你的呼唤',540,1240);
     ctx.font='25px "Microsoft YaHei",sans-serif';ctx.fillStyle=paper;wrapCanvas(ctx,snapshot.reasons[0],540,1288,880,36,3);

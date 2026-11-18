@@ -1,4 +1,4 @@
-"""Focused v9 320/390px actor, scale and reading layout checks (legacy filename).
+"""Focused v10 320/390px result, identity, scale and reading layout checks (legacy filename).
 Run only after the full QA suite, using the same isolated Chrome instance.
 """
 import hashlib
@@ -36,7 +36,7 @@ check('identity preview has no code-generation explanation','!document.querySele
 for language,identity in identities.items():
     js(f'document.querySelector("#master-name").value={json.dumps(identity["name"])};document.querySelector("#master-name").dispatchEvent(new Event("input",{{bubbles:true}}))')
     check(language+' long code fits the narrow setup', '(()=>{const e=document.querySelector(".master-code-value"),m=document.querySelector("#modal");return e.scrollWidth<=e.clientWidth+1 && m.getBoundingClientRect().right<=innerWidth && document.documentElement.scrollWidth<=innerWidth})()')
-    if language=='fr': screenshot('setup-french-320-v9.png')
+    if language=='fr': screenshot('setup-french-320-v10.png')
 click('[data-action="close"]')
 
 name=identities['fr']['name']
@@ -52,14 +52,15 @@ def seed_question(index):
         click('[data-action="resume"]')
     wait_for(f'document.querySelector(".question-body")?.dataset.questionIndex==="{index}" && document.querySelector(".question-body").getAttribute("aria-busy")!=="true"')
 
-for index in sorted(set(stage_starts + actor_indices)):
+# The v9 question content is unchanged; its full war-scene layout audit remains report-layout-v9.json.
+for index in stage_starts:
     seed_question(index)
     for width in (320,390):
         viewport(width,844,True)
         time.sleep(.15)
         check(f'current actor identity at question {index+1} fits {width}px', f'(()=>{{const q=FateData.QUESTIONS[{index}],stageIndex=typeof q.stage==="number"?q.stage:FateData.STAGES.findIndex(s=>s.id===q.stage),role=document.querySelector("#quiz-aside .stage-role, #quiz-aside [data-stage-role]");return document.documentElement.scrollWidth<=innerWidth&&!!role&&role.textContent.includes(q.role)&&getComputedStyle(role).display!=="none"&&role.getBoundingClientRect().height>0}})()')
         check(f'question {index+1} controls clear the options at {width}px','document.querySelector(".quiz-bottom").getBoundingClientRect().top>=document.querySelector(".options").getBoundingClientRect().bottom')
-        screenshot(f'chapter-{index+1}-{width}-v9.png')
+        screenshot(f'chapter-{index+1}-{width}-v10.png')
 
 for index in scale_indices:
     seed_question(index)
@@ -67,11 +68,11 @@ for index in scale_indices:
         viewport(width,844,True)
         time.sleep(.15)
         check(f'scale {index+1} at {width}px fits and stays unselected','document.documentElement.scrollWidth<=innerWidth && !document.querySelector(".question-role") && document.querySelectorAll(".agreement-scale [role=radio]").length===7 && [...document.querySelectorAll(".scale-option")].every(e=>e.getAttribute("aria-checked")==="false" && e.getBoundingClientRect().width>=30)')
-        screenshot(f'scale-{index+1}-{width}-v9.png')
+        screenshot(f'scale-{index+1}-{width}-v10.png')
     click('[data-action="answer"][data-index="6"]')
     time.sleep(.9)
     check(f'scale {index+1} still awaits Continue', f'document.querySelector(".question-body").dataset.questionIndex==="{index}" && !document.querySelector("#next-question").disabled')
-    screenshot(f'scale-{index+1}-selected-v9.png')
+    screenshot(f'scale-{index+1}-selected-v10.png')
 
 js(f'''localStorage.setItem(FateData.STORAGE_KEY,JSON.stringify({{version:1,name:{json.dumps(name)},answers:FateData.QUESTIONS.map((q,i)=>q.type==='scale'?6:i%q.options.length),index:{last_index},completed:true}}))''')
 reload_home()
@@ -80,11 +81,14 @@ wait_for('!!document.querySelector(".result-master-code")')
 viewport(320,844,True)
 check('long French code fits result', 'document.documentElement.scrollWidth<=innerWidth && document.querySelector(".result-master-code").scrollWidth<=document.querySelector(".result-master-code").clientWidth+1')
 check('personal reading and evidence links fit narrow results','(()=>{const r=document.querySelector("#personal-reading, .personal-reading");return !!r&&r.scrollWidth<=r.clientWidth+1&&r.querySelectorAll(\'[data-action="review-question"], [data-action="review-reading-question"]\').length>=4})()')
-screenshot('result-french-320-v9.png')
+for width in (320,390):
+    viewport(width,844,True)
+    check(f'matching result fits {width}px', 'document.documentElement.scrollWidth<=innerWidth && document.querySelector(".result-master-code").scrollWidth<=document.querySelector(".result-master-code").clientWidth+1')
+    screenshot(f'result-french-{width}-v10.png')
 click('[data-action="share"]')
 wait_for('!!document.querySelector(".share-preview") && document.querySelector(".share-preview").complete')
 png=js('document.querySelector(".share-preview").src.split(",")[1]')
-(OUT/'summoning-record-french-v9.png').write_bytes(base64.b64decode(png))
+(OUT/'summoning-record-french-v10.png').write_bytes(base64.b64decode(png))
 check('long French code PNG has intended dimensions','document.querySelector(".share-preview").naturalWidth===1080 && document.querySelector(".share-preview").naturalHeight===1920')
 click('[data-action="close"]')
 js('localStorage.clear()')
@@ -92,7 +96,7 @@ reload_home()
 viewport(1440,1050)
 build_bytes=(ROOT/'index.html').read_bytes()
 output={'checks':checks,'runtimeErrors':errors,'identities':identities,'build':{'bytes':len(build_bytes),'sha256':hashlib.sha256(build_bytes).hexdigest()}}
-(OUT/'report-layout-v9.json').write_text(json.dumps(output,ensure_ascii=False,indent=2),encoding='utf-8')
+(OUT/'report-layout-v10.json').write_text(json.dumps(output,ensure_ascii=False,indent=2),encoding='utf-8')
 print(json.dumps({'checks':len(checks),'passed':sum(c['pass'] for c in checks),'runtimeErrors':errors},ensure_ascii=False))
 ws.close()
 if errors or not all(c['pass'] for c in checks): raise SystemExit(1)

@@ -1,0 +1,54 @@
+[
+  {
+    "id": "open-spontaneity-and-own-path",
+    "description": "同样保留个人道路，但选择当面表达、临场改道和立即行动；不应因为自主就默认安静的小次郎。",
+    "keyChoices": [
+      { "question": "q05", "answerIndex": 0, "meaning": "把积蓄投入工作室，接受不确定结果" },
+      { "question": "q06", "answerIndex": 0, "meaning": "回头把话当面说完，接受错过列车" },
+      { "question": "q13", "answerIndex": 1, "meaning": "公开表明信任，同时不为未亲见的细节背书" },
+      { "question": "q20", "answerIndex": 1, "meaning": "另找一条未走过的路，接受旧准备作废" }
+    ],
+    "answers": [2,1,0,4,0,0,2,2,2,1,0,0,1,0,3,3,1,1,0,1,2,0,2,1],
+    "expectedFamily": ["musashi", "cu", "nero"],
+    "expectedDirection": { "strategy": "low", "bond": "low", "presence": "high", "resolve": "high" }
+  },
+  {
+    "id": "oath-and-shared-protection",
+    "description": "守住信念与誓约，也将同伴和流亡者放进决定；表达偏私下，允许等待与准备。",
+    "keyChoices": [
+      { "question": "q08", "answerIndex": 0, "meaning": "亲自射箭承担代价，终止战争" },
+      { "question": "q10", "answerIndex": 0, "meaning": "先护送流亡者，延后复国" },
+      { "question": "q11", "answerIndex": 0, "meaning": "放下武器接受审判" },
+      { "question": "q12", "answerIndex": 0, "meaning": "不撤回信念，即使面临死亡" }
+    ],
+    "answers": [1,0,6,4,2,1,0,0,0,0,0,0,0,0,3,3,0,0,0,0,1,6,0,0],
+    "expectedFamily": ["artoria", "jeanne", "mash", "lancelot", "arash"],
+    "expectedDirection": { "vision": "high", "bond": "high", "presence": "low", "order": "high" }
+  },
+  {
+    "id": "independent-practice-and-instinct",
+    "description": "为个人道路和独立决定保留边界，倾向直接行动与现场判断；少作公开表态。",
+    "keyChoices": [
+      { "question": "q05", "answerIndex": 0, "meaning": "把积蓄投入工作室，接受不确定结果" },
+      { "question": "q09", "answerIndex": 2, "meaning": "仅与愿意继续的人远征" },
+      { "question": "q17", "answerIndex": 1, "meaning": "放弃书店告别，争取独立开展计划" },
+      { "question": "q18", "answerIndex": 1, "meaning": "在城外生活，为自己与过去保留距离" }
+    ],
+    "answers": [2,2,6,4,0,2,0,2,2,1,0,0,2,2,3,3,1,1,0,1,1,0,2,1],
+    "expectedFamily": ["kojiro", "musashi", "scathach"],
+    "expectedDirection": { "strategy": "low", "bond": "low", "presence": "low", "resolve": "high" }
+  },
+  {
+    "id": "practical-planning-and-evidence",
+    "description": "愿意付出等待代价核实证据、整理条件和安排未来，偏实际、内敛与明确程序。",
+    "keyChoices": [
+      { "question": "q05", "answerIndex": 2, "meaning": "等到有六个月余粮再远行" },
+      { "question": "q13", "answerIndex": 0, "meaning": "核对经过，再决定是否公开支持伴侣" },
+      { "question": "q14", "answerIndex": 1, "meaning": "提供完整记录接受审查，同时继续工作" },
+      { "question": "q19", "answerIndex": 2, "meaning": "先用两年核实深空计划依据" }
+    ],
+    "answers": [1,0,6,4,2,1,1,1,1,2,1,1,0,1,3,3,1,2,2,2,1,6,0,1],
+    "expectedFamily": ["waver", "holmes", "emiya", "hassan", "medea"],
+    "expectedDirection": { "vision": "low", "strategy": "high", "presence": "low", "resolve": "low" }
+  }
+]

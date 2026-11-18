@@ -1,4 +1,4 @@
-"""Exercise the active v9 page (legacy script filename), including actor roles, confirmation and motion.
+"""Exercise the v10 matching page with the unchanged v9 question bank (legacy script filename), including actor roles, confirmation and motion.
 Run with an isolated Chrome DevTools instance on localhost:9333.
 """
 from pathlib import Path
@@ -83,20 +83,21 @@ cdp('Page.reload')
 wait_for('!!document.querySelector(".hero")')
 check('new actor question bank does not reuse old answers', 'FateData.STORAGE_KEY.endsWith("v9") && !document.querySelector("[data-action=resume]") && !document.querySelector("[data-action=last-result]")')
 wait_for('typeof FateData!=="undefined" && !!FateData.QUESTIONS && typeof FateIdentity!=="undefined" && !!FateIdentity.generateMasterCode && typeof FateReading!=="undefined" && typeof FateReading.buildAnswerReading==="function"')
+check('v10 calibrated matching is present in the built page', 'FateData.MATCHING_VERSION==="semantic-direction-v10"')
 question_count = js('FateData.QUESTIONS.length')
 last_index = question_count - 1
 check('v9 loads twenty-four questions and four chapters', 'FateData.QUESTIONS.length===24 && FateData.STAGES.length===4')
 check('chapters retain their story order and the war chapter uses actor roles', '(()=>{const expected=["远行之前","军旗之下","灯火归途","星海与圣杯"];return FateData.STAGES.every((s,i)=>s.title===expected[i]&&s.role?.trim())&&FateData.STAGES[1].role!=="领兵的将军"})()')
 check('home retains Fate artwork', 'document.querySelectorAll(".preview-card img").length===3')
 check('opening has no tutorial sales pitch', '!/(不需要玩过|不必了解|不考历史|没有知识考点|标准答案)/.test(document.querySelector("main").textContent)')
-screenshot('home-desktop-v9.png')
+screenshot('home-desktop-v10.png')
 viewport(390,844,True)
 check('mobile home fits', 'document.documentElement.scrollWidth<=innerWidth')
-screenshot('home-mobile-v9.png')
+screenshot('home-mobile-v10.png')
 click('[data-action="setup"]')
 check('setup is concise', 'document.querySelector("#modal").open && !/(不需要玩过|知识考点|标准答案|这些题关于)/.test(document.querySelector("#modal").textContent)')
 check('setup omits explanatory code origin note', '!document.querySelector(".code-origin-note")')
-screenshot('setup-mobile-v9.png',False)
+screenshot('setup-mobile-v10.png',False)
 master_identity = js('FateIdentity.generateMasterCode("旅人")')
 master_code = master_identity['code']
 js('document.querySelector("#master-name").value="旅人";document.querySelector("#master-name").dispatchEvent(new Event("input",{bubbles:true}))')
@@ -105,7 +106,7 @@ js('document.querySelector("#master-name").value="青岚";document.querySelector
 check('changing the name updates the live identity', 'document.querySelector("#master-code-preview .master-code-value").textContent.trim()===FateIdentity.generateMasterCode("青岚").code && FateIdentity.generateMasterCode("青岚").code!==FateIdentity.generateMasterCode("旅人").code')
 js('document.querySelector("#master-name").value="旅人";document.querySelector("#master-name").dispatchEvent(new Event("input",{bubbles:true}))')
 check('restoring a name restores its original identity', f'document.querySelector("#master-code-preview .master-code-value").textContent.trim()==={json.dumps(master_code)}')
-screenshot('setup-identity-v9.png',False)
+screenshot('setup-identity-v10.png',False)
 js('document.querySelector("#setup-form").requestSubmit()')
 wait_for(at_question(0))
 wait_for('!document.getAnimations().some(a=>a.playState==="running" && a.effect?.target?.classList?.contains("view-enter"))')
@@ -115,7 +116,7 @@ first_meta = inspect_question(0)
 viewport(320,760,True)
 check('320px question fits', 'document.documentElement.scrollWidth<=innerWidth')
 viewport(390,844,True)
-screenshot('quiz-mobile-v9.png')
+screenshot('quiz-mobile-v10.png')
 check('mobile controls do not cover the last option','document.querySelector(".quiz-bottom").getBoundingClientRect().top>=document.querySelector(".options").getBoundingClientRect().bottom')
 check('mobile uses the current scene height without a blank reserve','Math.abs(document.querySelector("#quiz-question-slot").getBoundingClientRect().height-document.querySelector(".question-body").getBoundingClientRect().height)<3')
 js('window.__qaShell=document.querySelector(".quiz-shell");window.__qaHUD=document.querySelector(".master-hud");window.__qaTrack=document.querySelector(".stage-track")')
@@ -188,7 +189,7 @@ for i in range(2, question_count):
     neutral = meta['neutralIndex']
     if neutral>=0:
         check('historical aesthetic preference includes an unscored choice', '!!document.querySelector(".option-neutral")')
-        screenshot('preference-mobile-v9.png')
+        screenshot('preference-mobile-v10.png')
         press_key(str(neutral+1), f'Digit{neutral+1}')
     else:
         choice = 3 if meta['type'] == 'scale' else i % option_count
@@ -206,7 +207,7 @@ for i in range(2, question_count):
 
 wait_for('!!document.querySelector(".ritual-view")')
 wait_for('!!document.querySelector("#reveal-button") && !document.querySelector("#reveal-button").hidden && !document.querySelector("#reveal-button").disabled')
-screenshot('ritual-mobile-v9.png')
+screenshot('ritual-mobile-v10.png')
 click('[data-action="unveil"]')
 wait_for('!!document.querySelector("#reveal-card.is-flipped")')
 check('card front is already decoded at reveal', 'document.querySelector(".reveal-front img").complete && document.querySelector(".reveal-front img").naturalWidth>0')
@@ -236,16 +237,16 @@ for link in reading_links:
     click('[data-action="close"]')
 check('radar explains the axes', 'document.querySelectorAll(".axis-endpoints dt").length===6')
 check('mobile result fits', 'document.documentElement.scrollWidth<=innerWidth')
-screenshot('result-mobile-v9.png')
+screenshot('result-mobile-v10.png')
 click('.reason-list .reason-trace')
 check('reason shows the exact saved answer','(()=>{const saved=JSON.parse(localStorage.getItem(FateData.STORAGE_KEY));const i=Number(document.querySelector(".reason-list .reason-trace").dataset.index);return document.querySelector(".answer-trace").textContent.includes(FateData.QUESTIONS[i].options[saved.answers[i]].text)})()')
-screenshot('answer-evidence-mobile-v9.png',False)
+screenshot('answer-evidence-mobile-v10.png',False)
 click('[data-action="close"]')
 viewport(1440,1050)
-screenshot('result-desktop-v9.png')
+screenshot('result-desktop-v10.png')
 click('[data-action="result-tab"][data-tab="history"]')
 check('history retains its sources', 'document.querySelector("#result-lore-content .source-link").href.startsWith("https:")')
-screenshot('result-history-desktop-v9.png')
+screenshot('result-history-desktop-v10.png')
 click('[data-action="result-tab"][data-tab="fate"]')
 check('Fate profile retains noble phantasm data', '!!document.querySelector(".np-command-card") && !!document.querySelector(".np-name h3")')
 js('window.__qaCanvasText=[];window.__qaOriginalFillText=CanvasRenderingContext2D.prototype.fillText;CanvasRenderingContext2D.prototype.fillText=function(text,...args){window.__qaCanvasText.push(String(text));return window.__qaOriginalFillText.call(this,text,...args)}')
@@ -259,8 +260,8 @@ check('phone preview is a real standalone PNG', 'document.querySelector(".share-
 check('image keeps its native long-press menu', 'document.querySelector(".share-preview").dispatchEvent(new MouseEvent("contextmenu",{bubbles:true,cancelable:true})) && getComputedStyle(document.querySelector(".share-preview")).pointerEvents!=="none"')
 check('PNG download has a useful filename', 'document.querySelector(".share-actions a[download]").download.includes(document.querySelector("#result-name").textContent) && document.querySelector(".share-actions a[download]").download.endsWith(".png")')
 png=js('document.querySelector(".share-preview").src.split(",")[1]')
-(OUT/'summoning-record-v9.png').write_bytes(base64.b64decode(png))
-download_dir=OUT/'downloads-v9'
+(OUT/'summoning-record-v10.png').write_bytes(base64.b64decode(png))
+download_dir=OUT/'downloads-v10'
 download_dir.mkdir(exist_ok=True)
 download_name=js('document.querySelector(".share-actions a[download]").download')
 download_file=download_dir/download_name
@@ -274,7 +275,7 @@ checks.append({'check':'downloaded PNG matches the long-press preview','pass':do
 if not download_ok: raise AssertionError('PNG download failed')
 viewport(390,844,True)
 check('phone save dialog fits the viewport', 'document.querySelector("#modal").getBoundingClientRect().right<=innerWidth && document.querySelector(".share-preview").getBoundingClientRect().width<=innerWidth')
-screenshot('save-record-mobile-v9.png',False)
+screenshot('save-record-mobile-v10.png',False)
 cdp('Input.dispatchKeyEvent',{'type':'rawKeyDown','key':'Escape','code':'Escape','windowsVirtualKeyCode':27,'nativeVirtualKeyCode':27})
 cdp('Input.dispatchKeyEvent',{'type':'keyUp','key':'Escape','code':'Escape','windowsVirtualKeyCode':27,'nativeVirtualKeyCode':27})
 wait_for('!document.querySelector("#modal").open')
@@ -288,7 +289,7 @@ check('all 24 servants remain available', 'document.querySelectorAll(".archive-c
 js('document.querySelector("#origin-filter").value="历史人物";document.querySelector("#origin-filter").dispatchEvent(new Event("change"))')
 check('history filter works', 'document.querySelectorAll(".archive-card").length>0 && [...document.querySelectorAll(".archive-origin")].every(e=>e.textContent.includes("历史人物"))')
 viewport(390,844,True)
-screenshot('archive-mobile-v9.png')
+screenshot('archive-mobile-v10.png')
 
 # A second run verifies reduced motion and that leaving a summoning cancels it.
 cdp('Emulation.setEmulatedMedia',{'features':[{'name':'prefers-reduced-motion','value':'reduce'}]})
@@ -348,8 +349,8 @@ audit=js('''(()=>{
 audit_fields=('deterministic','nameDoesNotAffectScores','fourContinuousChapters','roleAndAuthority','threeIntimacyPrompts','sevenCitedAnonymousWarPrompts','traceable','threeNeutralPreferences','neutralOnlyInCulture','twoSevenPointScales','mixedOrdinaryCounts','finalGrailWish','personalReadingTraceable','identityDeterministic','identityFourLanguages')
 checks.append({'check':'v9 four-chapter question bank, identity and evidence contract','pass':audit['questions']==24 and audit['servants']==24 and audit['key'].endswith('v9') and all(audit[k] for k in audit_fields),'details':audit})
 build_bytes=(ROOT/'index.html').read_bytes()
-output={'checks':checks,'runtimeErrors':errors,'motion':motion,'screenshots':sorted(p.name for p in OUT.glob('*-v9.png')),'build':{'bytes':len(build_bytes),'sha256':hashlib.sha256(build_bytes).hexdigest()}}
-(OUT/'report-v9.json').write_text(json.dumps(output,ensure_ascii=False,indent=2),encoding='utf-8')
+output={'checks':checks,'runtimeErrors':errors,'motion':motion,'screenshots':sorted(p.name for p in OUT.glob('*-v10.png')),'build':{'bytes':len(build_bytes),'sha256':hashlib.sha256(build_bytes).hexdigest()}}
+(OUT/'report-v10.json').write_text(json.dumps(output,ensure_ascii=False,indent=2),encoding='utf-8')
 print(json.dumps({'checks':len(checks),'passed':sum(c['pass'] for c in checks),'failed':[c for c in checks if not c['pass']],'runtimeErrors':errors,'motion':motion,'audit':audit},ensure_ascii=False,indent=2))
 ws.close()
 if errors or not all(c['pass'] for c in checks):
