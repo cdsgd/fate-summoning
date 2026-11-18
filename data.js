@@ -14,6 +14,9 @@ import { WISH_PRIORITIES, wishAffinity } from './wish-priorities.js';
 
 export const STORAGE_KEY = 'fate-summoning-contract-v11';
 export const MATCHING_VERSION = MATCH_MODEL_VERSION;
+// A requested presentation preference, applied equally to every five-star.
+// It can only change close contenders; it never changes personality evidence.
+export const FIVE_STAR_SUMMON_BONUS = 0.03;
 export const SCENARIO_NOTE = '32个选择分成四章，包含七道当事人视角的历史战争题、三道亲密关系题、八道关于相处与做事方式的情境题。审美只作故事回顾，不参与人格与英灵匹配。';
 
 export const AXES = [
@@ -269,7 +272,8 @@ const matchAnswers = createAffinityMatcher(QUESTIONS, SERVANTS);
  * axis's attainable range. They are not evidence for a middle/low personality.
  * Value choices use their declared weights. Behavioral preferences and the
  * concrete wish contribute separately; aesthetic choices do not affect affinity.
- * A resonance index measures calibrated direction distance, not probability.
+ * A small, uniform five-star preference affects the summon order. Resonance
+ * remains the unbonused answer affinity, not rarity or a summoning probability.
  * @param {number[]} answers One valid option index for each question in the bank.
  */
 export function calculateResult(answers) {
@@ -306,8 +310,15 @@ export function calculateResult(answers) {
     const semanticSimilarity = 1 - 2 * item.distance ** 2;
     const behaviorSimilarity = behavioral.ranked.find(row => row.id === item.servant.id)?.similarity || 0;
     const traitSimilarity = (1 - behaviorWeight) * semanticSimilarity + behaviorWeight * behaviorSimilarity;
-    const similarity = (1 - wishWeight) * traitSimilarity + wishWeight * wishAffinity(item.servant.id, wishPriority);
-    return { ...item, distance: Math.sqrt(Math.max(0, 2 - 2 * similarity)) / 2 };
+    const rawSimilarity = (1 - wishWeight) * traitSimilarity + wishWeight * wishAffinity(item.servant.id, wishPriority);
+    const summonBonus = item.servant.game.rarity === 5 ? FIVE_STAR_SUMMON_BONUS : 0;
+    const summonSimilarity = rawSimilarity + summonBonus;
+    // Dividing every contender by the same constant preserves ordering and
+    // gives the near-tie display a bounded distance despite the small bonus.
+    const selectionSimilarity = summonSimilarity / (1 + FIVE_STAR_SUMMON_BONUS);
+    return { ...item, rawSimilarity, summonSimilarity, summonBonus,
+      rawDistance: Math.sqrt(Math.max(0, 2 - 2 * rawSimilarity)) / 2,
+      distance: Math.sqrt(Math.max(0, 2 - 2 * selectionSimilarity)) / 2 };
   }).sort((a,b) => a.distance - b.distance || a.servant.id.localeCompare(b.servant.id, 'en'));
   const matched = blended[0].servant;
   const explanation = buildMatchExplanation(QUESTIONS, answers, { best: matched, scores, behavior }, AXES);
@@ -319,12 +330,16 @@ export function calculateResult(answers) {
     behaviorWeight,
     wishPriority,
     wishWeight,
+    fiveStarSummonBonus: FIVE_STAR_SUMMON_BONUS,
+    summonBonusApplied: blended[0].summonBonus,
+    rawSimilarity: blended[0].rawSimilarity,
+    summonSimilarity: blended[0].summonSimilarity,
     wishAffinityNote: wishAffinity(matched.id, wishPriority) > 0
       ? `这次愿望优先考虑${WISH_PRIORITIES[wishPriority]}，与本作对${matched.name}愿望侧面的解读有呼应。它只占匹配的一小部分，不代表整个人格。`
       : `你这次优先考虑${WISH_PRIORITIES[wishPriority]}；这与本作对${matched.name}愿望侧面的解读不完全相同，保留这份差异。`,
     best: matched,
     runnersUp: blended.slice(1, 3).map(item => item.servant),
-    resonance: Math.max(0, Math.min(100, Math.round(100 * (1 - blended[0].distance)))),
+    resonance: Math.max(0, Math.min(100, Math.round(100 * (1 - blended[0].rawDistance)))),
     nearTie: blended.length > 1 && blended[1].distance - blended[0].distance < 0.01,
     matchGap: blended.length > 1 ? Math.round((blended[1].distance - blended[0].distance) * 1000) / 10 : null,
     ...explanation,

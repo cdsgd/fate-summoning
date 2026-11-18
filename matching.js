@@ -8,7 +8,7 @@
  * vector length cannot give profiles near the centre an automatic advantage.
  * No random draws, per-character offsets, observed-user data or result quotas.
  */
-export const MATCH_MODEL_VERSION = 'evidence-and-behavior-v11';
+export const MATCH_MODEL_VERSION = 'evidence-and-behavior-v12';
 
 const dot = (a, b) => a.reduce((sum, value, axis) => sum + value * b[axis], 0);
 const unit = vector => {

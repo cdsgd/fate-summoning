@@ -17,9 +17,10 @@ def bundle_module(filename, exports, namespace):
 html = (ROOT / "index.template.html").read_text(encoding="utf-8")
 matching = bundle_module("matching.js", ["createAffinityMatcher", "MATCH_MODEL_VERSION"], "FateMatching")
 wish = bundle_module("wish-priorities.js", ["WISH_PRIORITIES", "wishAffinity"], "FateWish")
+lore = bundle_module("servant-lore.js", ["SERVANT_LORE"], "FateLore")
 behavior = bundle_module("behavior.js", ["BEHAVIOR_AXES", "SERVANT_BEHAVIOR", "analyzeBehavior", "rankBehavior"], "FateBehavior")
 explanations = bundle_module("explanations.js", ["buildMatchExplanation", "buildValueObservations"], "FateExplanations")
-data = bundle_module("data.js", ["AXES", "STAGES", "QUESTIONS", "SERVANTS", "SOURCES", "STORAGE_KEY", "MATCHING_VERSION", "calculateResult"], "FateData")
+data = bundle_module("data.js", ["AXES", "STAGES", "QUESTIONS", "SERVANTS", "SOURCES", "STORAGE_KEY", "MATCHING_VERSION", "FIVE_STAR_SUMMON_BONUS", "calculateResult"], "FateData")
 art = bundle_module("art.js", ["ritualSVG", "crestSVG", "classIcon"], "FateArt")
 fate_art = bundle_module("fate-art.js", ["commandSealSVG", "servantCardBackSVG", "catalystSVG", "playSummoningChime"], "FateRitualArt")
 portraits = bundle_module("portraits.js", ["PORTRAITS"], "FatePortraits")
@@ -32,8 +33,9 @@ app = re.sub(r"import\s*\{([^}]+)\}\s*from\s*['\"]\./fate-art\.js['\"];?", r"con
 app = re.sub(r"import\s*\{([^}]+)\}\s*from\s*['\"]\./portraits\.js['\"];?", r"const {\1} = FatePortraits;", app)
 app = re.sub(r"import\s*\{([^}]+)\}\s*from\s*['\"]\./master-code\.js['\"];?", r"const {\1} = FateIdentity;", app)
 app = re.sub(r"import\s*\{([^}]+)\}\s*from\s*['\"]\./reading\.js['\"];?", r"const {\1} = FateReading;", app)
+app = re.sub(r"import\s*\{([^}]+)\}\s*from\s*['\"]\./servant-lore\.js['\"];?", r"const {\1} = FateLore;", app)
 html = html.replace("/* INLINE_STYLE */", "\n".join((ROOT / name).read_text(encoding="utf-8") for name in ("style.css", "game.css", "motion.css")))
-for token, value in [("/* INLINE_MATCHING */", matching), ("/* INLINE_WISH */", wish), ("/* INLINE_BEHAVIOR */", behavior), ("/* INLINE_EXPLANATIONS */", explanations), ("/* INLINE_DATA */", data), ("/* INLINE_ART */", art), ("/* INLINE_FATE_ART */", fate_art), ("/* INLINE_PORTRAITS */", portraits), ("/* INLINE_IDENTITY */", identity), ("/* INLINE_READING */", reading), ("/* INLINE_APP */", "(()=>{\n" + app + "\n})();")]:
+for token, value in [("/* INLINE_MATCHING */", matching), ("/* INLINE_WISH */", wish), ("/* INLINE_LORE */", lore), ("/* INLINE_BEHAVIOR */", behavior), ("/* INLINE_EXPLANATIONS */", explanations), ("/* INLINE_DATA */", data), ("/* INLINE_ART */", art), ("/* INLINE_FATE_ART */", fate_art), ("/* INLINE_PORTRAITS */", portraits), ("/* INLINE_IDENTITY */", identity), ("/* INLINE_READING */", reading), ("/* INLINE_APP */", "(()=>{\n" + app + "\n})();")]:
     html = html.replace(token, value.replace("</script", "<\\/script"))
 (ROOT / "index.html").write_text(html, encoding="utf-8")
 print(f"Built {ROOT / 'index.html'} ({len(html.encode('utf-8')):,} bytes)")
