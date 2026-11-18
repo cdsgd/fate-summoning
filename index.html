@@ -176,6 +176,9 @@
   .reveal-card{animation:none!important;transition:none!important}
   .scale-dot{transition:none!important}
 }
+
+.behavior-reading{margin-top:46px}.behavior-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px}.behavior-grid .reading-item{min-width:0}.reading-evidence{display:grid;gap:12px}.reading-trace,.reason-trace{white-space:normal;overflow-wrap:anywhere;text-align:left}.reading-trace q,.reason-trace q{display:block;margin-top:5px;font-size:11px;line-height:1.9}.reason-list li>strong{display:block;color:var(--paper);font-weight:normal;font-family:var(--serif);font-size:18px}.reason-list li>p{margin:10px 0}.reason-evidence{display:grid;gap:10px}.reason-evidence .reason-trace{border:0;background:none;display:block;padding:0}.reason-evidence .reason-trace span{font-size:10px}.reason-evidence .reason-trace q{color:var(--muted)}.match-differences{margin-top:24px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}.match-differences h3{font:normal 19px var(--serif);color:var(--paper)}.wish-reading{margin-top:30px}.behavior-reading>.small-note{margin-bottom:25px}
+@media(max-width:760px){.behavior-grid{grid-template-columns:1fr;gap:25px}.behavior-reading{margin-top:36px}}
 </style>
 </head>
 <body>
@@ -204,7 +207,7 @@
  * vector length cannot give profiles near the centre an automatic advantage.
  * No random draws, per-character offsets, observed-user data or result quotas.
  */
-const MATCH_MODEL_VERSION = 'semantic-direction-v10';
+const MATCH_MODEL_VERSION = 'evidence-and-behavior-v11';
 
 const dot = (a, b) => a.reduce((sum, value, axis) => sum + value * b[axis], 0);
 const unit = vector => {
@@ -298,6 +301,349 @@ function createAffinityMatcher(questions, servants) {
 
 return {createAffinityMatcher, MATCH_MODEL_VERSION};
 })();</script>
+  <script>const FateWish = (() => {
+// Original fan affinity notes about the wish itself. These do not classify the
+// player's morality, personality, skill, or behavioral preferences.
+const WISH_PRIORITIES = {
+  wealth: '个人财富与生活选择', health: '自己的健康与人生体验',
+  mastery: '精进一项技艺', recognition: '被他人看见与认可',
+  close_person: '一位亲近者的生活', public_good: '更大范围的生活改善',
+  keep_options: '保留决定愿望的余地',
+};
+const MOTIVES = {
+  artoria: ['public_good', 'close_person'], emiya: ['public_good', 'close_person'],
+  cu: ['mastery', 'health'], medusa: ['close_person', 'health'],
+  medea: ['close_person', 'wealth'], kojiro: ['mastery', 'health'],
+  heracles: ['close_person', 'public_good'], gilgamesh: ['wealth', 'recognition'],
+  iskandar: ['recognition', 'health'], hassan: ['mastery', 'public_good'],
+  lancelot: ['close_person', 'mastery'], mash: ['close_person', 'public_good'],
+  jeanne: ['public_good', 'close_person'], merlin: ['keep_options', 'health'],
+  scathach: ['mastery', 'keep_options'], arash: ['public_good', 'close_person'],
+  nero: ['recognition', 'wealth'], waver: ['mastery', 'recognition'],
+  enkidu: ['close_person', 'public_good'], dantes: ['keep_options', 'close_person'],
+  oberon: ['keep_options', 'recognition'], tamamo: ['close_person', 'health'],
+  musashi: ['mastery', 'health'], holmes: ['mastery', 'keep_options'],
+};
+
+function wishAffinity(servantId, priority) {
+  if (!Object.hasOwn(WISH_PRIORITIES, priority)) return 0;
+  const motives = MOTIVES[servantId] || [];
+  return motives[0] === priority ? 1 : motives[1] === priority ? 0.4 : 0;
+}
+
+return {WISH_PRIORITIES, wishAffinity};
+})();</script>
+  <script>const FateBehavior = (() => {
+/**
+ * Original short behavioral preference exercise, inspired by four familiar
+ * preference domains. This is neither the MBTI instrument nor a type diagnosis.
+ * It intentionally has no access to the six value axes or servant summaries.
+ */
+const BEHAVIOR_AXES = [
+  { id: 'energy', name: '恢复精力', low: '独处整理', high: '与人交流' },
+  { id: 'information', name: '接收信息', low: '具体细节', high: '关联可能' },
+  { id: 'decision', name: '决定依据', low: '统一标准', high: '个别处境' },
+  { id: 'structure', name: '安排节奏', low: '先行确定', high: '保留选择' },
+];
+
+/**
+ * OPTIONAL original fan interpretations for affinity matching. The four values
+ * are explicit authored hypotheses, not official MBTI types. Never infer these
+ * from the existing value profile, voice, kindness, intelligence or class.
+ * Order: energy, information, decision, structure; each uses [0, 100], neutral at 50.
+ */
+const SERVANT_BEHAVIOR = {
+  artoria: [20, 30, 25, 5],
+  emiya: [10, 35, 10, 20],
+  cu: [85, 25, 35, 90],
+  medusa: [5, 25, 90, 60],
+  medea: [15, 80, 20, 40],
+  kojiro: [15, 10, 40, 85],
+  heracles: [10, 5, 75, 40],
+  gilgamesh: [90, 75, 15, 40],
+  iskandar: [100, 85, 70, 90],
+  hassan: [5, 10, 25, 10],
+  lancelot: [15, 20, 70, 25],
+  mash: [20, 25, 95, 15],
+  jeanne: [35, 75, 80, 10],
+  merlin: [70, 100, 60, 95],
+  scathach: [10, 25, 10, 40],
+  arash: [75, 20, 80, 65],
+  nero: [100, 70, 85, 90],
+  waver: [15, 75, 10, 5],
+  enkidu: [20, 80, 90, 95],
+  dantes: [25, 90, 25, 30],
+  oberon: [65, 95, 30, 100],
+  tamamo: [90, 30, 95, 65],
+  musashi: [80, 15, 45, 100],
+  holmes: [25, 90, 0, 70],
+};
+
+const validAnswers = (questions, answers) => Array.isArray(questions) &&
+  Array.isArray(answers) && questions.length === answers.length &&
+  questions.every((q, i) => Number.isInteger(answers[i]) && !!q.options?.[answers[i]]);
+
+const behaviorValue = (q, option, id) => {
+  if (option.neutral || q.category === 'culture') return null;
+  const declaredFacet = q.behaviorFacet ?? q.facet;
+  if (declaredFacet !== id) return null;
+  const raw = typeof option.behavior === 'object' && option.behavior !== null
+    ? option.behavior[id]
+    : declaredFacet === id ? option.behavior : undefined;
+  return Number.isFinite(raw) && raw >= -1 && raw <= 1 ? raw : null;
+};
+
+/**
+ * A directional claim requires two different questions on the same side.
+ * Opposite answers remain mixed even if one is numerically more intense.
+ * Zero/neutral does not supply a second directional observation.
+ */
+function analyzeBehavior(questions, answers) {
+  const valid = validAnswers(questions, answers);
+  const facets = BEHAVIOR_AXES.map(facet => {
+    const evidence = valid ? questions.flatMap((q, questionIndex) => {
+      const answerIndex = answers[questionIndex], selected = q.options[answerIndex];
+      const value = behaviorValue(q, selected, facet.id);
+      if (value === null) return [];
+      // A value identical across all options describes the setting, not a choice.
+      const otherValues = q.options.map(option => behaviorValue(q, option, facet.id));
+      if (!otherValues.some(other => other !== null && other !== value)) return [];
+      return [{ questionId: q.id, questionIndex, answerIndex,
+        answerText: selected.text, value }];
+    }) : [];
+    const directional = evidence.filter(item => item.value !== 0);
+    const positive = directional.filter(item => item.value > 0);
+    const negative = directional.filter(item => item.value < 0);
+    const distinct = new Set(directional.map(item => item.questionId ?? item.questionIndex));
+    const mixed = positive.length > 0 && negative.length > 0;
+    const side = !mixed && distinct.size >= 2 ? (positive.length ? 1 : -1) : null;
+    const total = evidence.reduce((sum, item) => sum + item.value, 0);
+    const strength = evidence.reduce((sum, item) => sum + Math.abs(item.value), 0);
+    const mean = evidence.length ? total / evidence.length : 0;
+    const text = side === null ? (mixed ? `这两道题里，你分别选择了「${facet.low}」和「${facet.high}」，本次没有一致偏向。` : '这次没有两条同向的有效线索，暂不概括。') : `在这两道题中，你都先选择了${side > 0 ? facet.high : facet.low}。这只描述本次情境下的偏好。`;
+    return { ...facet, label: facet.name, text, traitLabel: side === null ? null : side > 0 ? facet.high : facet.low, answered: evidence.length, score: Math.round(50 + 50 * mean),
+      side, value: mean, coherence: strength ? Math.abs(total) / strength : 0,
+      status: mixed ? 'mixed' : side === null ? 'insufficient' : 'consistent', evidence };
+  });
+  const active = facets.filter(facet => facet.side !== null);
+  return { facets, coverage: active.length / BEHAVIOR_AXES.length };
+}
+
+/**
+ * Cosine in the evidenced facet subspace. A single reliable facet can only
+ * distinguish its two directions; it cannot invent ordering within one side.
+ * Missing profiles contribute no invented directional agreement.
+ */
+function rankBehavior(analysis, servants, profiles = SERVANT_BEHAVIOR) {
+  const active = analysis.facets.flatMap(facet => {
+    const index = BEHAVIOR_AXES.findIndex(axis => axis.id === facet.id);
+    return facet.side === null || index < 0 ? [] : [{ facet, index }];
+  });
+  const user = active.map(({ facet }) => facet.value);
+  const length = Math.hypot(...user);
+  const ranked = servants.map(servant => {
+    const profile = servant.behaviorProfile ?? profiles[servant.id];
+    const values = active.map(({ index }) => Number.isFinite(profile?.[index]) ? (profile[index] - 50) / 50 : 0);
+    const characterLength = Math.hypot(...values);
+    const similarity = length && characterLength
+      ? Math.max(-1, Math.min(1, values.reduce((sum, value, index) => sum + value * user[index], 0) / (length * characterLength)))
+      : 0;
+    return { id: servant.id, similarity };
+  }).sort((a, b) => b.similarity - a.similarity || a.id.localeCompare(b.id, 'en'));
+  return { ...analysis, similarities: Object.fromEntries(ranked.map(item => [item.id, item.similarity])), ranked };
+}
+
+return {BEHAVIOR_AXES, SERVANT_BEHAVIOR, analyzeBehavior, rankBehavior};
+})();</script>
+  <script>const FateExplanations = (() => {
+const { BEHAVIOR_AXES, SERVANT_BEHAVIOR } = FateBehavior;
+
+// Limited descriptions of questionnaire choices: no ability, moral worth,
+// official character parameter or psychological diagnosis is inferred here.
+const VALUE_LANGUAGE = {
+  vision: {
+    low: '眼前可实现的生活与结果', high: '即使代价较高也想保留的目标或信念',
+    titles: ['这几次先选择了可实现的结果', '这几次愿意为认定的目标付出代价'],
+  },
+  strategy: {
+    low: '现场感受或直接尝试', high: '核实条件、准备和推演',
+    titles: ['这几次先凭现场判断或尝试', '这几次先弄清条件再作判断'],
+  },
+  bond: {
+    low: '个人生活和自主选择的空间', high: '共同生活、共同承担或同行者的需要',
+    titles: ['这几次给个人道路留了位置', '这几次把共同承担放在前面'],
+  },
+  presence: {
+    low: '私下回应、少作展示或不在当下说出', high: '直接表达或让自己的想法、成果被人看见',
+    titles: ['这几次没有把表达放到台前', '这几次愿意让自己的表达被看见'],
+  },
+  order: {
+    low: '调整、退出或重订已有安排', high: '守住已作出的约定与责任边界',
+    titles: ['这几次愿意重订已有安排', '这几次先维护已有的约定'],
+  },
+  resolve: {
+    low: '等待、保留余地后再决定', high: '先作出决定并开始行动',
+    titles: ['这几次愿意付出等待的代价', '这几次愿意先作决定再行动'],
+  },
+};
+
+const publicEvidence = signal => ({
+  questionId: signal.questionId, questionIndex: signal.questionIndex,
+  answerIndex: signal.answerIndex, answerText: signal.answerText,
+  observation: signal.observation, value: signal.value,
+});
+
+function validAnswers(questions, answers) {
+  return Array.isArray(questions) && Array.isArray(answers) &&
+    answers.length === questions.length && questions.every((q, i) =>
+      Array.isArray(q.options) && Number.isInteger(answers[i]) && !!q.options[answers[i]]);
+}
+
+function strongest(signals, count = 2) {
+  const ordered = [...signals].sort((a, b) => b.strength - a.strength || a.questionIndex - b.questionIndex);
+  const picked = [];
+  for (const requireDifferentStage of [true, false]) {
+    for (const signal of ordered) {
+      if (picked.length >= count) break;
+      if (picked.some(item => item.questionId === signal.questionId)) continue;
+      if (requireDifferentStage && picked.some(item => item.stage === signal.stage)) continue;
+      picked.push(signal);
+    }
+  }
+  return picked;
+}
+
+function sceneNames(evidence) {
+  return evidence.map(item => `第${item.questionIndex + 1}题`).join('、');
+}
+
+/**
+ * Shared, pure value aggregation. Only deliberately measured dimensions count.
+ * A wish is a single priority observation, never repeated trait evidence.
+ */
+function buildValueObservations(questions, answers, axes) {
+  if (!validAnswers(questions, answers) || !Array.isArray(axes)) return [];
+  return axes.flatMap((axis, axisIndex) => {
+    const language = VALUE_LANGUAGE[axis.id];
+    if (!language) return [];
+    const signals = questions.flatMap((q, questionIndex) => {
+      if (q.category === 'culture' || q.category === 'wish' || q.behaviorFacet ||
+          !Array.isArray(q.measures) || !q.measures.includes(axis.id)) return [];
+      const answerIndex = answers[questionIndex], answer = q.options[answerIndex];
+      const value = answer.scores?.[axisIndex];
+      if (Array.isArray(answer.measures) && !answer.measures.includes(axis.id)) return [];
+      if (answer.neutral || !Number.isFinite(value) || Math.abs(value) < 0.6 ||
+          !q.options.some(option => !option.neutral && option.scores?.[axisIndex] !== value)) return [];
+      return [{ questionId: q.id || `index-${questionIndex}`, questionIndex, answerIndex,
+        answerText: answer.text, observation: answer.inference || answer.summary || answer.text,
+        value, stage: q.stage, strength: Math.abs(value) * Math.max(0, q.weight || 0) }];
+    });
+    const negative = signals.filter(item => item.value < 0), positive = signals.filter(item => item.value > 0);
+    const totalWeight = signals.reduce((sum, item) => sum + item.strength, 0);
+    if (signals.length < 2 || totalWeight <= 0) return [];
+    const positiveShare = positive.reduce((sum, item) => sum + item.strength, 0) / totalWeight;
+    const side = positiveShare >= 0.5 ? 1 : -1;
+    const same = side > 0 ? positive : negative, opposite = side > 0 ? negative : positive;
+    const share = side > 0 ? positiveShare : 1 - positiveShare;
+    if (same.length >= 2 && share >= 2 / 3) {
+      const support = strongest(same).map(publicEvidence);
+      const counterEvidence = strongest(opposite, 1).map(publicEvidence);
+      if (support.length < 2) return [];
+      const direction = side > 0 ? language.high : language.low;
+      const caveat = counterEvidence.length ? `不过，${sceneNames(counterEvidence)}作了相反取舍；这只是本次较多出现的选择，不是每种处境都如此。` : '这个概括只适用于这些选择，不代表你在所有处境中都会这样做。';
+      return [{ axisId: axis.id, axisIndex, axisName: axis.name, state: 'preference', side,
+        title: language.titles[side > 0 ? 1 : 0],
+        text: `在${sceneNames(support)}里，你都先为${direction}留了位置。${caveat}`,
+        traitLabel: side > 0 ? axis.high : axis.low,
+        evidence: [...support, ...counterEvidence], supportEvidence: support, counterEvidence,
+        strength: share * 10 + Math.min(same.length, 4), share }];
+    }
+    if (negative.length && positive.length) {
+      const support = [...strongest(negative, 1), ...strongest(positive, 1)].map(publicEvidence);
+      return [{ axisId: axis.id, axisIndex, axisName: axis.name, state: 'mixed', side: null,
+        title: `${axis.name}：两种取舍都出现在你的回答里`,
+        text: `在${sceneNames([support[0]])}里，你先考虑${language.low}；在${sceneNames([support[1]])}里，则先考虑${language.high}。两处选择不同，本次不把你固定在这一维度的某一端。`,
+        traitLabel: '随处境不同', evidence: support, supportEvidence: [], counterEvidence: [],
+        strength: 5 + 10 * Math.min(positiveShare, 1 - positiveShare), share: null }];
+    }
+    return [];
+  });
+}
+
+function validateBehaviorEvidence(questions, answers, facet, side) {
+  if (!Array.isArray(facet.evidence)) return [];
+  const seen = new Set();
+  return facet.evidence.flatMap(item => {
+    const index = item.questionIndex, q = questions[index];
+    const answerIndex = answers[index], answer = q?.options[answerIndex];
+    const value = answer?.behavior?.[facet.id];
+    if (!q || q.behaviorFacet !== facet.id || !answer || answer.neutral ||
+        !Number.isFinite(value) || Math.sign(value) !== side || seen.has(q.id)) return [];
+    seen.add(q.id);
+    return [{ questionId: q.id, questionIndex: index, answerIndex,
+      answerText: answer.text, observation: answer.inference || answer.summary || answer.text, value }];
+  });
+}
+
+/** Evidence -> limited observation -> same dimension in this work's profile. */
+function buildMatchExplanation(questions, answers, result, axes) {
+  const fallback = { summary: '这些回答尚未提供足够重复的共同线索，这次结果可以作为一种可能的回应。',
+    reasons: [], evidence: [], reasonGroups: [], differences: [], wishReading: null,
+    shareReason: '尚未形成两题以上共同支持的具体共鸣，详细选择回顾见网页。' };
+  if (!validAnswers(questions, answers) || !result?.best || !Array.isArray(axes)) return fallback;
+  const best = result.best;
+  const observations = buildValueObservations(questions, answers, axes);
+  const reasonGroups = [], differences = [];
+  for (const item of observations.filter(item => item.state === 'preference')) {
+    const profile = best.profile?.[item.axisIndex];
+    if (!Number.isFinite(profile) || profile === 50) continue;
+    const sameDirection = Math.sign(profile - 50) === item.side;
+    const trait = item.side > 0 ? VALUE_LANGUAGE[item.axisId].high : VALUE_LANGUAGE[item.axisId].low;
+    const evidence = item.supportEvidence;
+    const text = `${sceneNames(evidence)}里，你都优先考虑${trait}。${sameDirection ? `在本作对${best.name}的解读中，${item.traitLabel}也是一个侧面，因此这两处取舍与你们的共同点有关。` : `本作对${best.name}的解读在“${item.axisName}”上更偏向另一侧，这里保留你们的差异。`}${item.counterEvidence.length ? `你在${sceneNames(item.counterEvidence)}也有另一种选择，因此这里只概括本次较多出现的取舍。` : ''}`;
+    const group = { id: `value-${item.axisId}`, kind: sameDirection ? 'support' : 'difference',
+      title: sameDirection ? item.title : `${item.axisName}上的不同`, text,
+      axisId: item.axisId, side: item.side, source: 'value', evidence,
+      counterEvidence: item.counterEvidence, strength: item.strength };
+    (sameDirection ? reasonGroups : differences).push(group);
+  }
+  const characterBehavior = SERVANT_BEHAVIOR[best.id];
+  for (const facet of result.behavior?.facets || []) {
+    if (facet.side !== 1 && facet.side !== -1) continue;
+    const axisIndex = BEHAVIOR_AXES.findIndex(axis => axis.id === facet.id), axis = BEHAVIOR_AXES[axisIndex];
+    const profile = Array.isArray(characterBehavior) ? characterBehavior[axisIndex] : characterBehavior?.profile?.[axisIndex];
+    if (!axis || !Number.isFinite(profile) || profile === 50) continue;
+    const evidence = validateBehaviorEvidence(questions, answers, facet, facet.side);
+    if (evidence.length < 2) continue;
+    const trait = facet.side > 0 ? axis.high : axis.low;
+    const sameDirection = Math.sign(profile - 50) === facet.side;
+    const text = `${sceneNames(evidence)}里，你都选择了${trait}。${sameDirection ? `本作对${best.name}的解读在“${axis.label || axis.name}”上也偏向这一侧，这是这两处选择支持的一个共同点。` : `本作对${best.name}的解读在“${axis.label || axis.name}”上偏向另一侧，这里与你的选择有区别。`}这只描述这两种情境中的取舍。`;
+    const group = { id: `behavior-${facet.id}`, kind: sameDirection ? 'support' : 'difference',
+      title: `${axis.label || axis.name}上的${sameDirection ? '呼应' : '不同'}`, text,
+      axisId: facet.id, side: facet.side, source: 'behavior', evidence, counterEvidence: [], strength: 12 };
+    (sameDirection ? reasonGroups : differences).push(group);
+  }
+  reasonGroups.sort((a, b) => b.strength - a.strength || a.id.localeCompare(b.id));
+  differences.sort((a, b) => b.strength - a.strength || a.id.localeCompare(b.id));
+  const selected = reasonGroups.slice(0, 3);
+  const wishIndex = questions.findIndex(q => q.category === 'wish');
+  const wish = wishIndex >= 0 ? questions[wishIndex].options[answers[wishIndex]] : null;
+  const wishReading = wish ? { questionId: questions[wishIndex].id, questionIndex: wishIndex,
+    answerIndex: answers[wishIndex], answerText: wish.text,
+    text: wish.inference || wish.summary || wish.text,
+    limitation: '这只是这次愿望的优先项，不能单凭它推断品格、能力或整个人格。' } : null;
+  const summary = selected.length
+    ? `${selected[0].title}，这是你与${best.name}这次相遇的一处呼应。具体依据见下方的两道回答。`
+    : fallback.summary;
+  return { summary, reasons: selected.map(item => item.text),
+    evidence: selected.map(item => ({ ...item.evidence[0], axisId: item.axisId,
+      shared: true, coherent: true, supportive: true, source: item.source })),
+    reasonGroups: selected, differences: differences.slice(0, 1), wishReading,
+    shareReason: selected.length ? `${sceneNames(selected[0].evidence)}：${selected[0].title}。与${best.name}的本作画像在这一方向呼应；完整回答依据见网页。` : fallback.shareReason };
+}
+
+return {buildMatchExplanation, buildValueObservations};
+})();</script>
   <script>const FateData = (() => {
 /**
  * Fan-made summoning affinity model. Profiles, answers and readings are original
@@ -305,13 +651,17 @@ return {createAffinityMatcher, MATCH_MODEL_VERSION};
  * Displayed axes use attainable minimum/maximum values. Matching compares
  * player and character answer directions on a shared questionnaire scale.
  * Four identity chapters use original thought experiments; aesthetic preferences
- * remain optional, low-weight signals.
+ * are recalled separately and never contribute to the matching score.
  */
 const { createAffinityMatcher, MATCH_MODEL_VERSION } = FateMatching;
+const questionBank = [{"category": "intimacy", "categoryLabel": "远行前 · 亲密关系", "topic": "两年的距离", "weight": 0.9, "title": "相爱的人要去另一座城工作两年，你刚得到一份不愿放弃的工作。", "context": "两份工作都确实值得保留，也没有必须由你迁就的理由。月底前要给出答复：你最愿意承担哪一种损失？", "role": "远行前的你", "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。", "options": [{"text": "跟去另一座城，放弃这份工作；我更不想失去每天一起生活的关系。", "summary": "为共同生活让出当前工作", "scores": [0, 0, 2, 0, 0, 0], "measures": ["bond"], "label": "A", "excerpt": "跟去另一座城，放弃这份工作；我更不想失去每天一起生活的关系。", "inference": "为共同生活让出当前工作"}, {"text": "留下工作，约定每月见面；我愿意承担往返开销和两年的异地。", "summary": "同时保留事业和关系，承担异地成本", "scores": [0, 1, 1, 0, 0, 0], "measures": ["bond", "strategy"], "label": "B", "excerpt": "留下工作，约定每月见面；我愿意承担往返开销和两年的异地。", "inference": "同时保留事业和关系，承担异地成本"}, {"text": "结束关系，留下工作；比起两年等待，我更想开始各自新的生活。", "summary": "为自己的工作和新生活结束关系", "scores": [0, 0, -2, 0, 0, 0], "measures": ["bond"], "label": "C", "excerpt": "结束关系，留下工作；比起两年等待，我更想开始各自新的生活。", "inference": "为自己的工作和新生活结束关系"}], "type": "choice", "id": "q01", "stage": 0, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["bond", "strategy"]}, {"category": "intimacy", "categoryLabel": "远行前 · 亲密关系", "topic": "相处的边界", "weight": 0.9, "title": "你和恋人准备搬到一起。对方喜欢把日程一起安排，你却需要每天留一段完全独处的时间。", "context": "合租每月能少付一千元，但两人作息不同；分开住就会少一笔旅行或娱乐预算。没有谁必须让步，你会选哪种安排？", "role": "远行前的你", "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。", "options": [{"text": "合租，固定划出每天一小时独处，其余共同安排；我愿意按约定协调。", "summary": "用明确的相处安排协调共同生活", "scores": [0, 0, 1, 0, 0, 0], "measures": ["bond"], "label": "A", "excerpt": "合租，固定划出每天一小时独处，其余共同安排；我愿意按约定协调。", "inference": "用明确的相处安排协调共同生活"}, {"text": "合租，各自安排日程，想见面时再约；我愿意面对临时协调的不便。", "summary": "共同居住但保留各自日程", "scores": [0, 0, -1, 0, 0, 0], "measures": ["bond"], "label": "B", "excerpt": "合租，各自安排日程，想见面时再约；我愿意面对临时协调的不便。", "inference": "共同居住但保留各自日程"}, {"text": "分开住，继续约会；我愿意多花房租，换自己的空间和作息。", "summary": "为独立生活空间多付房租", "scores": [0, 0, -2, 0, 0, 0], "measures": ["bond"], "label": "C", "excerpt": "分开住，继续约会；我愿意多花房租，换自己的空间和作息。", "inference": "为独立生活空间多付房租"}], "type": "choice", "id": "q02", "stage": 0, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["bond"]}, {"category": "attitude", "categoryLabel": "远行前 · 个人态度", "topic": "被理解与被赞许", "weight": 0.75, "title": "完成一件让我满意的事后，我通常会主动让更多人知道。", "context": "想一想你最近几次完成工作、作品或个人目标后的做法。", "role": "远行前的你", "authority": "依据自己平时分享成果的做法选择认同程度。", "options": [{"label": "1", "text": "完全不像我", "scores": [0, 0, 0, -2, 0, 0], "excerpt": "完全不像我", "summary": "较少主动扩大成果的可见范围", "scaleValue": -2, "measures": ["presence"], "inference": "较少主动扩大成果的可见范围"}, {"label": "2", "text": "大多不像我", "scores": [0, 0, 0, -1.3333333333333333, 0, 0], "excerpt": "大多不像我", "summary": "较少主动扩大成果的可见范围", "scaleValue": -1.3333333333333333, "measures": ["presence"], "inference": "较少主动扩大成果的可见范围"}, {"label": "3", "text": "有点不像我", "scores": [0, 0, 0, -0.6666666666666666, 0, 0], "excerpt": "有点不像我", "summary": "较少主动扩大成果的可见范围", "scaleValue": -0.6666666666666666, "measures": ["presence"], "inference": "较少主动扩大成果的可见范围"}, {"label": "4", "text": "一半像，一半不像", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "一半像，一半不像", "summary": "分享成果的做法取决于具体场合", "scaleValue": 0, "measures": ["presence"], "inference": "分享成果的做法取决于具体场合"}, {"label": "5", "text": "有点像我", "scores": [0, 0, 0, 0.6666666666666666, 0, 0], "excerpt": "有点像我", "summary": "较常主动扩大成果的可见范围", "scaleValue": 0.6666666666666666, "measures": ["presence"], "inference": "较常主动扩大成果的可见范围"}, {"label": "6", "text": "大多是我", "scores": [0, 0, 0, 1.3333333333333333, 0, 0], "excerpt": "大多是我", "summary": "较常主动扩大成果的可见范围", "scaleValue": 1.3333333333333333, "measures": ["presence"], "inference": "较常主动扩大成果的可见范围"}, {"label": "7", "text": "完全是我", "scores": [0, 0, 0, 2, 0, 0], "excerpt": "完全是我", "summary": "较常主动扩大成果的可见范围", "scaleValue": 2, "measures": ["presence"], "inference": "较常主动扩大成果的可见范围"}], "type": "scale", "statement": "完成一件让我满意的事后，我通常会主动让更多人知道。", "id": "q03", "stage": 0, "rationale": "只询问主动分享成果的习惯，不把被赞美与被信任排序，也不据此判断社交能量。", "measures": ["presence"]}, {"id": "b01", "stage": 0, "category": "behavior", "categoryLabel": "远行前 · 日常抉择", "topic": "出发前的空闲", "title": "出发前，你终于忙完一整天的事。距离睡觉还有两小时，精神尚可。", "context": "几个熟悉的朋友在附近聚会，也没人等你到场。你可以去坐坐，或独自待着；怎样过这两小时更容易让你恢复精神？", "role": "收拾好行李的你", "authority": "两种安排都不欠任何人承诺，你决定如何度过自己的空闲。", "type": "choice", "weight": 0.8, "rationale": "询问无社交义务、熟人低压力条件下的恢复方式；不据此推断勇敢、社交能力或对朋友的重视。", "options": [{"text": "过去和朋友聊天，边聊边放松；独自待着反而容易继续想着今天的事。", "summary": "在熟悉的互动中恢复精神", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"energy": 1}, "label": "A", "excerpt": "过去和朋友聊天，边聊边放松；独自待着反而容易继续想着今天的事。", "inference": "在熟悉的互动中恢复精神"}, {"text": "自己散步、听歌或安静待着；等精神恢复后，再找朋友聊天。", "summary": "先通过独处恢复精神", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"energy": -1}, "label": "B", "excerpt": "自己散步、听歌或安静待着；等精神恢复后，再找朋友聊天。", "inference": "先通过独处恢复精神"}], "measures": [], "behaviorFacet": "energy"}, {"id": "b02", "stage": 0, "category": "behavior", "categoryLabel": "远行前 · 日常抉择", "topic": "第一天的安排", "title": "车票和住处都订好了，陌生城市的第一天还有六个小时可自由活动。", "context": "喜欢的地点通常不用预约，两种安排花费相近。你更愿意怎样准备这六个小时？", "role": "安排旅程的你", "authority": "基本交通与住处已确定，余下时间由你自己安排。", "type": "choice", "weight": 0.8, "rationale": "在低风险闲暇情境询问预先定案或保留可能；不把随性当作不负责任，也不把安排当作守信。", "options": [{"text": "提前选好主要地点和大致顺序；有一个确定安排，我会更安心。", "summary": "提前确定主要活动顺序", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"structure": -1}, "label": "A", "excerpt": "提前选好主要地点和大致顺序；有一个确定安排，我会更安心。", "inference": "提前确定主要活动顺序"}, {"text": "只留下一份备选清单，到时看天气和兴致再定；过早确定会让我觉得被绑住。", "summary": "保留到现场再选择的余地", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"structure": 1}, "label": "B", "excerpt": "只留下一份备选清单，到时看天气和兴致再定；过早确定会让我觉得被绑住。", "inference": "保留到现场再选择的余地"}], "measures": [], "behaviorFacet": "structure"}, {"category": "culture", "categoryLabel": "远行前 · 声音偏好", "topic": "启程前的一首歌", "weight": 0.4, "title": "长途车还没发动，你有一首歌的时间。", "context": "四段音乐一样长，你会先点开哪一段？", "role": "远行前的你", "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。", "options": [{"label": "A", "text": "一首多人合唱：独唱的人轮流退后，最后所有声音一起进来。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "一首多人合唱：独唱的人轮流退后，最后所有声音一起进来。", "summary": "容易留意不同的人如何汇成共同的声音", "measures": [], "inference": "容易留意不同的人如何汇成共同的声音"}, {"label": "B", "text": "只有弦乐，短短的旋律每次回来都会变一点。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "只有弦乐，短短的旋律每次回来都会变一点。", "summary": "愿意跟随细节和反复变化慢慢听下去", "measures": [], "inference": "愿意跟随细节和反复变化慢慢听下去"}, {"label": "C", "text": "节拍不太整齐的现场录音，能听见即兴、失误和观众起哄。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "节拍不太整齐的现场录音，能听见即兴、失误和观众起哄。", "summary": "会被现场的变化和直接的表达吸引", "measures": [], "inference": "会被现场的变化和直接的表达吸引"}, {"label": "D", "text": "熟悉的旧歌，还是原来那个版本，连停顿都没有改变。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "熟悉的旧歌，还是原来那个版本，连停顿都没有改变。", "summary": "熟悉而稳定的声音也能给你足够的内容", "measures": [], "inference": "熟悉而稳定的声音也能给你足够的内容"}, {"label": "E", "text": "这几段现在都不想听，先略过。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "这几段现在都不想听，先略过。", "summary": "本题不提供偏好线索", "neutral": true, "measures": [], "inference": "本题不提供偏好线索"}], "type": "choice", "id": "q04", "stage": 0, "rationale": "这是作品偏好；不从听歌、电影结尾或手稿兴趣推断责任感、善良、社交性或判断能力。", "measures": []}, {"category": "personal", "categoryLabel": "远行之前", "topic": "怎样开始一段新生活", "weight": 1, "title": "出发前，你收到两份邀请。", "context": "两份邀请都愿意保留到下周，你不用今天交钱。工作室收入不稳定，但有自己的作品与分成；稳定岗位收入明确，创作要留到业余。你更接近哪种回应？", "role": "远行前的你", "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。", "options": [{"text": "当天就答应加入工作室，先把名额拿下；我愿意边做边解决问题，不再等更多消息。", "summary": "愿意先开始工作，再在过程中调整", "scores": [1, -1, 0, 0, 0, 2], "measures": ["vision", "strategy", "resolve"], "label": "A", "excerpt": "当天就答应加入工作室，先把名额拿下；我愿意边做边解决问题，不再等更多消息。", "inference": "愿意先开始工作，再在过程中调整"}, {"text": "接稳定工作，先把收入和奖金拿到手；自己的作品慢一点，我也愿意。", "summary": "这次先保证可支配收入", "scores": [-2, 0, 0, 0, 0, 0], "measures": ["vision"], "label": "B", "excerpt": "接稳定工作，先把收入和奖金拿到手；自己的作品慢一点，我也愿意。", "inference": "这次先保证可支配收入"}, {"text": "暂时都不接，继续调查和存钱；我宁愿错过邀请，也不想现在承担这笔风险。", "summary": "为补足判断与资金暂缓决定", "scores": [0, 2, 0, 0, 0, -2], "measures": ["strategy", "resolve"], "label": "C", "excerpt": "暂时都不接，继续调查和存钱；我宁愿错过邀请，也不想现在承担这笔风险。", "inference": "为补足判断与资金暂缓决定"}], "type": "choice", "id": "q05", "stage": 0, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["vision", "strategy", "resolve"]}, {"category": "personal", "categoryLabel": "远行之前", "topic": "车站的最后一句话", "weight": 1, "title": "你已走到列车门边，送行的人还在站台另一头。那句一直没说出口的话，又一次浮上来。", "context": "你想说的是自己的真实心意，不是必须交代的要事。错过这班车要多花两小时和一笔改签费；这句话也可以以后再说。", "role": "远行前的你", "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。", "options": [{"text": "回去当面说完；我愿意花改签费，换一次直接表达。", "summary": "愿意付出现实成本当面表达", "scores": [0, 0, 0, 2, 0, 0], "measures": ["presence"], "label": "A", "excerpt": "回去当面说完；我愿意花改签费，换一次直接表达。", "inference": "愿意付出现实成本当面表达"}, {"text": "先上车，把话写清楚再发；我更容易在文字里把意思说准。", "summary": "选择私下文字表达", "scores": [0, 0, 0, -1, 0, 0], "measures": ["presence"], "label": "B", "excerpt": "先上车，把话写清楚再发；我更容易在文字里把意思说准。", "inference": "选择私下文字表达"}, {"text": "挥手上车，这次就不说了；我不想把这场告别变得更重。", "summary": "选择不在告别当下表达", "scores": [0, 0, 0, -2, 0, 0], "measures": ["presence"], "label": "C", "excerpt": "挥手上车，这次就不说了；我不想把这场告别变得更重。", "inference": "选择不在告别当下表达"}], "type": "choice", "id": "q06", "stage": 0, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["presence"]}, {"category": "war", "categoryLabel": "军旗之下 · 故事改写", "topic": "渡口对面的故人", "weight": 1, "title": "你与曾一起学武的好友分属敌对两方。两军约定，由你们在渡口决斗，胜者一方通行。", "context": "你已经答应赴约。不赴约就会失去渡口，也会背上怯战的名声；赴约则可能亲手杀死好友。天黑之前，你必须作出决定。", "role": "赴约的战士", "authority": "你决定自己是否赴约、怎样作战；更改决斗约定需要对方同意。", "options": [{"text": "今天就按约赴战；既然答应决斗，我不想再拖延，即使可能战死。", "summary": "按已有约定立即行动", "scores": [0, 0, 0, 0, 2, 1], "measures": ["order", "resolve"], "label": "A", "excerpt": "今天就按约赴战；既然答应决斗，我不想再拖延，即使可能战死。", "inference": "按已有约定立即行动"}, {"text": "请求改期，找双方都能通行的办法；我愿意拿渡口和名声换一次谈判机会。", "summary": "为重新谈判接受失去先机", "scores": [0, 2, 0, 0, 0, -1], "measures": ["strategy", "resolve"], "label": "B", "excerpt": "请求改期，找双方都能通行的办法；我愿意拿渡口和名声换一次谈判机会。", "inference": "为重新谈判接受失去先机"}, {"text": "拒绝决斗，放弃渡口；这段旧交比这次军令和名声更重要。", "summary": "让具体旧交优先于战约", "scores": [0, 0, 1, 0, -2, 0], "measures": ["bond", "order"], "label": "C", "excerpt": "拒绝决斗，放弃渡口；这段旧交比这次军令和名声更重要。", "inference": "让具体旧交优先于战约"}, {"text": "不去渡口，离开这支军队；我不愿替阵营赌上自己的命，即使以后无处容身。", "summary": "为自己的生存退出阵营责任", "scores": [0, 0, -2, 0, -2, 0], "measures": ["bond", "order"], "label": "D", "excerpt": "不去渡口，离开这支军队；我不愿替阵营赌上自己的命，即使以后无处容身。", "inference": "为自己的生存退出阵营责任"}], "type": "choice", "inspiration": {"servantId": "cu", "story": "《夺牛长征记》中库丘林与同门好友费迪亚分属敌对阵营、在渡口决斗的传说母题；题目中的通行约定与可选行动为原创推演。", "kind": "爱尔兰英雄传说改写", "sourceUrl": "https://www.britannica.com/topic/Cu-Chulainn"}, "id": "q07", "stage": 1, "sourceLabel": "故事原型参考 · 匿名改写", "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["order", "resolve", "strategy", "bond"]}, {"category": "war", "categoryLabel": "军旗之下 · 故事改写", "topic": "这一箭的代价", "weight": 1, "title": "停战协议已经写好：以你射出的箭落处划定边界。你知道，只有耗尽生命，才能把这一箭送到足够远的地方。", "context": "若不开弓，两军将在日落后重新交战。没有人能替你射这一箭，你也可以拒绝。弓已经在手里，你会怎样做？", "role": "边界前的弓手", "authority": "你只决定是否射箭，以及为此提出什么条件；不能保证别人一定遵守停战。", "options": [{"text": "射出这一箭；如果战争真能结束，我愿意把自己的生命用在这里。", "summary": "为结束战争承担生命代价", "scores": [2, 0, 2, 0, 0, 0], "measures": ["vision", "bond"], "label": "A", "excerpt": "射出这一箭；如果战争真能结束，我愿意把自己的生命用在这里。", "inference": "为结束战争承担生命代价"}, {"text": "先要求双方把履约方式写清，再决定是否开弓；我不愿在承诺不明时献出性命。", "summary": "先核实牺牲能否换来约定的结果", "scores": [0, 2, 0, 0, 0, -1], "measures": ["strategy", "resolve"], "label": "B", "excerpt": "先要求双方把履约方式写清，再决定是否开弓；我不愿在承诺不明时献出性命。", "inference": "先核实牺牲能否换来约定的结果"}, {"text": "放下弓，离开；我想活下去，不愿用自己的命支付这条边界。", "summary": "把自己的生存放在这一使命之前", "scores": [-1, 0, -1, 0, 0, 0], "measures": ["vision", "bond"], "label": "C", "excerpt": "放下弓，离开；我想活下去，不愿用自己的命支付这条边界。", "inference": "把自己的生存放在这一使命之前"}], "type": "choice", "inspiration": {"servantId": "arash", "story": "阿拉什以一箭划定伊朗与图兰边界、付出生命的伊朗英雄传说；期限、条约及可选行动为原创推演。", "kind": "伊朗英雄传说改写", "sourceUrl": "https://www.iranicaonline.org/articles/aras-avestan-erexsa/"}, "id": "q08", "stage": 1, "sourceLabel": "故事原型参考 · 匿名改写", "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["vision", "bond", "strategy", "resolve"]}, {"category": "war", "categoryLabel": "军旗之下 · 故事改写", "topic": "远方与归途", "weight": 1, "title": "你率领军队远征多年，终于来到一条大河前。你还想继续向东，士兵却拒绝再走，说他们只想回家。", "context": "补给已渐难维持，强令前进可能引发哗变。退回去，你要亲口承认这场远征到此为止。你怎样回应自己的军队？", "role": "亲率远征的统帅", "authority": "你可决定远征是否继续，也要面对部下的去留；不能让疲惫与缺粮凭空消失。", "options": [{"text": "宣布全军返程；我承认这次远征该结束，把仍在一起的队伍带回去。", "summary": "让共同返程优先于继续扩张", "scores": [-1, 0, 2, 0, 0, 0], "measures": ["bond", "vision"], "label": "A", "excerpt": "宣布全军返程；我承认这次远征该结束，把仍在一起的队伍带回去。", "inference": "让共同返程优先于继续扩张"}, {"text": "停留十天，清点补给、听取各部意见，再决定；这十天本身也会消耗粮食。", "summary": "先补足信息再决定远征去留", "scores": [0, 2, 0, 0, 0, -2], "measures": ["strategy", "resolve"], "label": "B", "excerpt": "停留十天，清点补给、听取各部意见，再决定；这十天本身也会消耗粮食。", "inference": "先补足信息再决定远征去留"}, {"text": "现在就和自愿者继续向东；我不想停下来反复商议，也想亲眼看到更远的地方。", "summary": "选择立即继续自己的远征目标", "scores": [2, 0, -1, 0, 0, 1], "measures": ["vision", "bond", "resolve"], "label": "C", "excerpt": "现在就和自愿者继续向东；我不想停下来反复商议，也想亲眼看到更远的地方。", "inference": "选择立即继续自己的远征目标"}], "type": "choice", "inspiration": {"servantId": "iskandar", "story": "亚历山大在希发西斯河前面对军队拒绝继续东进、最终决定折返的历史背景；所有可选行动均为原创推演。", "kind": "历史背景改写", "sourceUrl": "https://www.livius.org/sources/content/arrian/anabasis/mutiny-at-the-hyphasis/"}, "id": "q09", "stage": 1, "sourceLabel": "故事原型参考 · 匿名改写", "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["bond", "vision", "strategy", "resolve"]}, {"id": "b03", "stage": 1, "category": "behavior", "categoryLabel": "军旗之下 · 日常抉择", "topic": "陌生的地图", "title": "你刚到一个陌生营地，拿到一份说明：前半是地形与道路的具体标记，后半讲这些道路如何相互影响。", "context": "暂时没有紧急任务，两部分最后都要看。哪一种开头更容易让你理解这地方？", "role": "到达营地的新成员", "authority": "你负责弄清所在环境，没有指挥他人的任务；这次只决定先怎样读资料。", "type": "choice", "weight": 0.8, "rationale": "询问先从具体资料还是总体联系建立理解；不是智力、严谨或风险意识的测量。", "options": [{"text": "先把各条道路和地标逐个对上，知道具体在哪里，再把它们连起来。", "summary": "先建立具体事实与位置", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"information": -1}, "label": "A", "excerpt": "先把各条道路和地标逐个对上，知道具体在哪里，再把它们连起来。", "inference": "先建立具体事实与位置"}, {"text": "先看整体连接和可能路线，明白全局关系，再补每个地标。", "summary": "先建立整体联系再补细节", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"information": 1}, "label": "B", "excerpt": "先看整体连接和可能路线，明白全局关系，再补每个地标。", "inference": "先建立整体联系再补细节"}], "measures": [], "behaviorFacet": "information"}, {"id": "b04", "stage": 1, "category": "behavior", "categoryLabel": "军旗之下 · 日常抉择", "topic": "轮值的交换", "title": "同伴想与你交换今晚的轮值，好去见马上远行的家人。你也早已约好与朋友通话。", "context": "这两件事都重要，也都不是紧急救援。今晚守卫任务一样安全，换不换由你决定。你会先用哪种依据判断？", "role": "排到夜间轮值的你", "authority": "你只能决定是否与同伴交换自己的班次；其他人的轮值保持不变。", "type": "choice", "weight": 0.8, "rationale": "询问决定时先采用一致约定还是具体处境；不把前者写成无情、后者写成不讲道理。", "options": [{"text": "先按排好的轮值处理；双方都有安排，除非彼此谈妥交换条件，否则维持原定顺序。", "summary": "先采用双方一致适用的安排", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"decision": -1}, "label": "A", "excerpt": "先按排好的轮值处理；双方都有安排，除非彼此谈妥交换条件，否则维持原定顺序。", "inference": "先采用双方一致适用的安排"}, {"text": "先问清这次见面对他有多重要；即使没有同等回报，我也愿意按这次具体处境决定。", "summary": "先理解具体人的处境再决定", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"decision": 1}, "label": "B", "excerpt": "先问清这次见面对他有多重要；即使没有同等回报，我也愿意按这次具体处境决定。", "inference": "先理解具体人的处境再决定"}], "measures": [], "behaviorFacet": "decision"}, {"category": "war", "categoryLabel": "军旗之下 · 故事改写", "topic": "王位与留下的人", "weight": 1, "title": "王城失守，你带着残部退到城外。逃难者等待护送，旧臣却催你保存兵力，准备夺回王位。", "context": "你曾发誓守住这个国家。如今兵力只够优先做一件事；对方愿以你放弃王位为条件停战，但是否履约仍有风险。你怎样面对自己的败局？", "role": "失去王城的君主", "authority": "你可带领残部、谈判自己的退位；不能替平民承诺接受复国战争。", "options": [{"text": "先护送平民撤离，暂缓复国；我愿意让失去的王位更难拿回来。", "summary": "把平民撤离放在复国目标之前", "scores": [0, 0, 2, 0, 0, 0], "measures": ["bond"], "label": "A", "excerpt": "先护送平民撤离，暂缓复国；我愿意让失去的王位更难拿回来。", "inference": "把平民撤离放在复国目标之前"}, {"text": "保存残部，寻找新据点复国；我不甘心交出王位，也愿意承担续战的后果。", "summary": "坚持自己的王位与复国目标", "scores": [2, 0, -1, 0, 0, 0], "measures": ["vision", "bond"], "label": "B", "excerpt": "保存残部，寻找新据点复国；我不甘心交出王位，也愿意承担续战的后果。", "inference": "坚持自己的王位与复国目标"}, {"text": "接受退位，争取停战并带自己的亲近者离开；我想尽快结束这场败局，过自己的日子。", "summary": "为结束败局和个人生活让出王位", "scores": [-2, 0, -1, 0, 0, 0], "measures": ["vision", "bond"], "label": "C", "excerpt": "接受退位，争取停战并带自己的亲近者离开；我想尽快结束这场败局，过自己的日子。", "inference": "为结束败局和个人生活让出王位"}], "type": "choice", "inspiration": {"servantId": "artoria", "story": "亚瑟王文学中君主守护王国、王权崩解与终局责任的母题；退位停战、护送平民等具体处境与选项为原创推演。", "kind": "不列颠王权传说改写", "sourceUrl": "https://www.britannica.com/topic/King-Arthur"}, "id": "q10", "stage": 1, "sourceLabel": "故事原型参考 · 匿名改写", "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["bond", "vision"]}, {"category": "war", "categoryLabel": "军旗之下 · 故事改写", "topic": "自己的剑留下的伤", "weight": 1, "title": "你违背骑士誓约，救走了即将被处死的亲近之人。混战中，你杀死了昔日同袍；现在，他们的亲属要求你受审。", "context": "敌军正在逼近，你的剑术对守城仍有用。留城可以争取延后受审；城外也有一条离开的路，但之后会被通缉。你会先做什么？", "role": "违誓的骑士", "authority": "你决定是否交出武器、怎样请求弥补；不能用战功免除自己应受的追责。", "options": [{"text": "交出武器，立即受审；我接受别人按现有程序决定自己的处置。", "summary": "选择立即接受问责程序", "scores": [0, 0, 0, 0, 2, 0], "measures": ["order"], "label": "A", "excerpt": "交出武器，立即受审；我接受别人按现有程序决定自己的处置。", "inference": "选择立即接受问责程序"}, {"text": "请求以普通战士身份守城，战后受审；我先把眼前能做的事做完，再面对处置。", "summary": "优先眼前守城需要，延后问责", "scores": [0, 0, 1, 0, -1, 0], "measures": ["bond", "order"], "label": "B", "excerpt": "请求以普通战士身份守城，战后受审；我先把眼前能做的事做完，再面对处置。", "inference": "优先眼前守城需要，延后问责"}, {"text": "带着救出的人离城；我想保住我们往后的生活，即使要一直躲避追捕。", "summary": "为自己与亲近者的未来离开问责程序", "scores": [0, 0, -1, 0, -2, 0], "measures": ["bond", "order"], "label": "C", "excerpt": "带着救出的人离城；我想保住我们往后的生活，即使要一直躲避追捕。", "inference": "为自己与亲近者的未来离开问责程序"}], "type": "choice", "inspiration": {"servantId": "lancelot", "story": "兰斯洛特救出桂妮薇儿时杀死昔日圆桌同伴、使私人忠诚与共同誓约破裂的亚瑟王文学情节；守城和受审选项为原创推演。", "kind": "亚瑟王文学改写", "sourceUrl": "https://www.britannica.com/topic/Lancelot"}, "id": "q11", "stage": 1, "sourceLabel": "故事原型参考 · 匿名改写", "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["order", "bond"]}, {"category": "war", "categoryLabel": "军旗之下 · 故事改写", "topic": "审判席前的签名", "weight": 1, "title": "你曾带着军旗鼓舞同袍，如今被敌方俘获，独自站在审判席前。审判者要求你公开撤回对使命的宣称。", "context": "签下声明，他们承诺免于死刑，改为终身监禁；拒绝，审判将继续，你可能被处死。曾经的战友无法替你回答。", "role": "受审的旗手", "authority": "你只决定自己的陈述与签名；无法保证审判者会遵守承诺。", "options": [{"text": "不签；公开否认这个使命，对我来说比失去生命更难接受。", "summary": "不以撤回信念换取生存", "scores": [2, 0, 0, 0, 0, 0], "measures": ["vision"], "label": "A", "excerpt": "不签；公开否认这个使命，对我来说比失去生命更难接受。", "inference": "不以撤回信念换取生存"}, {"text": "签字保命；即使要否认过去、长期坐牢，我还是想活下去。", "summary": "优先保住生命，接受公开退让", "scores": [-2, 0, 0, 0, 0, 0], "measures": ["vision"], "label": "B", "excerpt": "签字保命；即使要否认过去、长期坐牢，我还是想活下去。", "inference": "优先保住生命，接受公开退让"}], "type": "choice", "inspiration": {"servantId": "jeanne", "story": "贞德在1431年审判中签署弃绝声明、被判终身监禁，随后被认定再犯并处死的历史背景；题目只截取当时的选择，不把承诺写成可靠保证。", "kind": "法国历史人物背景改写", "sourceUrl": "https://sourcebooks.fordham.edu/basis/joanofarc-trial.asp"}, "id": "q12", "stage": 1, "sourceLabel": "故事原型参考 · 匿名改写", "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["vision"]}, {"category": "intimacy", "categoryLabel": "归来后 · 亲密关系", "topic": "信任是否要公开站队", "weight": 0.9, "title": "有人指责你的伴侣曾在危急时舍弃同伴。对方说事情另有原因，希望你当众表明信任，但你没亲历那一幕。", "context": "公开支持会把你的信誉一起押上；不站出来，对方也可能觉得自己被留在了人群之外。你会怎么做？", "role": "归来后的你", "authority": "你决定自己的关系、住处与公开表态；亲近的人也有自己的决定。", "options": [{"text": "先核对经过，暂不表态；事实不清时，我不愿把自己的信誉押上去。", "summary": "先核实事实再决定是否公开支持", "scores": [0, 2, 0, 0, 0, -1], "measures": ["strategy", "resolve"], "label": "A", "excerpt": "先核对经过，暂不表态；事实不清时，我不愿把自己的信誉押上去。", "inference": "先核实事实再决定是否公开支持"}, {"text": "凭平时相处形成的判断，先公开说我相信对方；我没亲历细节，但此刻愿意站在伴侣身边。", "summary": "先凭个人经验判断，再公开表达支持", "scores": [0, -1, 1, 2, 0, 0], "measures": ["strategy", "bond", "presence"], "label": "B", "excerpt": "凭平时相处形成的判断，先公开说我相信对方；我没亲历细节，但此刻愿意站在伴侣身边。", "inference": "先凭个人经验判断，再公开表达支持"}, {"text": "私下陪对方整理经过、找人说明，不在公众面前发言。", "summary": "以私下具体协助支持伴侣", "scores": [0, 0, 1, -1, 0, 0], "measures": ["bond", "presence"], "label": "C", "excerpt": "私下陪对方整理经过、找人说明，不在公众面前发言。", "inference": "以私下具体协助支持伴侣"}, {"text": "这次不参与解释，让对方自行处理；我想保留自己的名誉和工作不受牵连。", "summary": "把自己的名誉和工作与伴侣争议分开", "scores": [0, 0, -2, 0, 0, 0], "measures": ["bond"], "label": "D", "excerpt": "这次不参与解释，让对方自行处理；我想保留自己的名誉和工作不受牵连。", "inference": "把自己的名誉和工作与伴侣争议分开"}], "type": "choice", "id": "q13", "stage": 2, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["strategy", "resolve", "bond", "presence"]}, {"category": "war", "categoryLabel": "归来后 · 战争余波", "topic": "败退之后的战报", "weight": 1, "title": "远征败退后，你回到后方。守卫要道的部将已被追责，朝廷却准备继续保留你的统帅之位。", "context": "人是你选的，部署也经你批准。战报还等着你签字；如何处置由朝廷裁定，而伤者与缺粮的部队仍待安置。", "role": "战后归来的统帅", "authority": "你决定如何述职、是否请辞；不能替别人免罪，也不能决定朝廷怎样处置自己。", "options": [{"text": "在战报中写明自己的任命与部署失误，请求一并降职。", "summary": "主动接受与部将共同承担的正式问责", "scores": [0, 0, 1, 0, 2, 0], "measures": ["order", "bond"], "label": "A", "excerpt": "在战报中写明自己的任命与部署失误，请求一并降职。", "inference": "主动接受与部将共同承担的正式问责"}, {"text": "如实呈交所有记录，但不主动请辞；我想保留职位，也接受朝廷审查后作决定。", "summary": "保留职位，由完整记录和审查决定处置", "scores": [0, 1, 0, 0, 1, 0], "measures": ["strategy", "order"], "label": "B", "excerpt": "如实呈交所有记录，但不主动请辞；我想保留职位，也接受朝廷审查后作决定。", "inference": "保留职位，由完整记录和审查决定处置"}, {"text": "先把军队安置好再报告自己的失误；我愿意越过时限，把善后放在前面。", "summary": "为实际善后延后报告程序", "scores": [0, 0, 1, 0, -1, 0], "measures": ["bond", "order"], "label": "C", "excerpt": "先把军队安置好再报告自己的失误；我愿意越过时限，把善后放在前面。", "inference": "为实际善后延后报告程序"}, {"text": "承认总体失利，但不主动写出自己错选部将；我想先保住权位，即使责任会更多落在他身上。", "summary": "为保住自己的权位少披露责任", "scores": [0, 0, -2, 0, -2, 0], "measures": ["bond", "order"], "label": "D", "excerpt": "承认总体失利，但不主动写出自己错选部将；我想先保住权位，即使责任会更多落在他身上。", "inference": "为保住自己的权位少披露责任"}], "type": "choice", "id": "q14", "stage": 2, "inspiration": {"servantId": "waver", "story": "《三国志·诸葛亮传》记载街亭失利后诸葛亮上疏认领任人失当等责任，请求自贬三等；朝廷保留职位的处境及三种应对为原创推演。", "kind": "中国历史人物背景改写", "sourceUrl": "https://zh.wikisource.org/wiki/三國志/卷35"}, "sourceLabel": "故事原型参考 · 匿名改写", "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["order", "bond", "strategy"]}, {"category": "culture", "categoryLabel": "归来后 · 观看偏好", "topic": "回城后的放映", "weight": 0.4, "title": "一场旧片重映，导演只留下三个剪辑版本：重逢时说清误会、重逢后一起吃饭、或让两人擦肩而过。", "context": "你更想看哪一种结尾？", "role": "归来后的你", "authority": "你决定自己的关系、住处与公开表态；亲近的人也有自己的决定。", "options": [{"label": "A", "text": "两人把旧日误会说开，约好明年还在这里见。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "两人把旧日误会说开，约好明年还在这里见。", "summary": "想看承诺被说清并继续", "measures": [], "inference": "想看承诺被说清并继续"}, {"label": "B", "text": "两人去吃一碗面，谁也没提以后，镜头留在并肩的沉默。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "两人去吃一碗面，谁也没提以后，镜头留在并肩的沉默。", "summary": "愿意让共同生活先于结论", "measures": [], "inference": "愿意让共同生活先于结论"}, {"label": "C", "text": "列车挡住镜头，等车过去，两人已经各自离开。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "列车挡住镜头，等车过去，两人已经各自离开。", "summary": "接受未完成关系留在画面外", "measures": [], "inference": "接受未完成关系留在画面外"}, {"label": "D", "text": "这些结尾都不想看，先不选。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "这些结尾都不想看，先不选。", "summary": "不以这次影片偏好参与匹配", "neutral": true, "measures": [], "inference": "不以这次影片偏好参与匹配"}], "type": "choice", "id": "q15", "stage": 2, "rationale": "这是作品偏好；不从听歌、电影结尾或手稿兴趣推断责任感、善良、社交性或判断能力。", "measures": []}, {"id": "b05", "stage": 2, "category": "behavior", "categoryLabel": "灯火归途 · 日常抉择", "topic": "归来后的周末", "title": "归来后的周末，你已经睡够，也处理完杂事。朋友提议一起吃饭，之后没有固定节目。", "context": "大家熟悉、不需要你照顾气氛；你也没有别的任务。通常哪种安排让你这一天过后更有精神？", "role": "周末有空的你", "authority": "你有充分的休息和自由时间，可以选择适合自己的相处量。", "type": "choice", "weight": 0.8, "rationale": "与b01共同询问低压力熟人情境的互动量；保留跨场合相反结果，不强行贴内外向标签。", "options": [{"text": "吃完饭就各自回去，下午独处；连续相处太久，即使开心也容易累。", "summary": "愉快相处后仍需要一段独处", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"energy": -1}, "label": "A", "excerpt": "吃完饭就各自回去，下午独处；连续相处太久，即使开心也容易累。", "inference": "愉快相处后仍需要一段独处"}, {"text": "吃完饭继续一起逛逛，聊到哪里算哪里；多待一会儿通常让我更有兴致。", "summary": "自愿延长熟悉的人际互动", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"energy": 1}, "label": "B", "excerpt": "吃完饭继续一起逛逛，聊到哪里算哪里；多待一会儿通常让我更有兴致。", "inference": "自愿延长熟悉的人际互动"}], "measures": [], "behaviorFacet": "energy"}, {"id": "b06", "stage": 2, "category": "behavior", "categoryLabel": "灯火归途 · 日常抉择", "topic": "书店的分成", "title": "你与朋友合办一场有报酬的书店活动，原先说好按工时分成。两人工时差不多，朋友这周家里突然多了一笔大开销。", "context": "没人付不起基本生活费，你自己也有想买的东西。朋友提出多分一点。你第一步更愿意怎么谈？", "role": "与朋友办活动的你", "authority": "你与朋友平等讨论分配，任何改动都需要双方同意。", "type": "choice", "weight": 0.8, "rationale": "再问一次统一分配依据与个别情境的优先次序；不将同情心与分析能力设成相反能力。", "options": [{"text": "先按约定算清这次报酬；如果我想帮忙，再从自己的份额另给。", "summary": "先分清统一报酬与额外帮助", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"decision": -1}, "label": "A", "excerpt": "先按约定算清这次报酬；如果我想帮忙，再从自己的份额另给。", "inference": "先分清统一报酬与额外帮助"}, {"text": "先了解这笔开销会造成什么影响，再商量这次是否改比例；不必每次都用同一个分法。", "summary": "先看具体需要再商量分配", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"decision": 1}, "label": "B", "excerpt": "先了解这笔开销会造成什么影响，再商量这次是否改比例；不必每次都用同一个分法。", "inference": "先看具体需要再商量分配"}], "measures": [], "behaviorFacet": "decision"}, {"category": "culture", "categoryLabel": "归来后 · 阅读偏好", "topic": "一封被退回的信", "weight": 0.4, "title": "展厅摆着三份小说手稿，都是已经公开的影印件。", "context": "它们都与一封信有关。你想先翻哪一份？", "role": "归来后的你", "authority": "你决定自己的关系、住处与公开表态；亲近的人也有自己的决定。", "options": [{"label": "A", "text": "一封反复改写的道歉，旁边附着收信人搬走前留下的地址。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "一封反复改写的道歉，旁边附着收信人搬走前留下的地址。", "summary": "容易被仍想送达的表达与未完的承诺吸引", "measures": [], "inference": "容易被仍想送达的表达与未完的承诺吸引"}, {"label": "B", "text": "一段没有寄出的解释，前后几页把同一件事讲得并不一样。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "一段没有寄出的解释，前后几页把同一件事讲得并不一样。", "summary": "会想追索细节怎样改变对一个人的判断", "measures": [], "inference": "会想追索细节怎样改变对一个人的判断"}, {"label": "C", "text": "一张只写地址的空信封，里面没有任何正文。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "一张只写地址的空信封，里面没有任何正文。", "summary": "有时愿意让没有说出的部分保留自己的空间", "measures": [], "inference": "有时愿意让没有说出的部分保留自己的空间"}, {"label": "D", "text": "这几件都没让我想翻，先略过。", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "这几件都没让我想翻，先略过。", "summary": "本题不提供偏好线索", "neutral": true, "measures": [], "inference": "本题不提供偏好线索"}], "type": "choice", "id": "q16", "stage": 2, "rationale": "这是作品偏好；不从听歌、电影结尾或手稿兴趣推断责任感、善良、社交性或判断能力。", "measures": []}, {"category": "bond", "categoryLabel": "灯火归途", "topic": "共同往事与新的机会", "weight": 1, "title": "旧日同伴合开的小书店要关门，邀你参加最后一晚。那晚也有一次能让你独立开展新计划的面谈。", "context": "两边都不能改期。面谈有实际报酬和发展机会，书店也确实是你在意的一段生活；你没有欠下出席承诺。", "role": "归来后的你", "authority": "你决定自己的关系、住处与公开表态；亲近的人也有自己的决定。", "options": [{"text": "去书店；我想和这些人一起告别，愿意放弃这次报酬与机会。", "summary": "为共同经历放弃个人发展机会", "scores": [0, 0, 2, 0, 0, 0], "measures": ["bond"], "label": "A", "excerpt": "去书店；我想和这些人一起告别，愿意放弃这次报酬与机会。", "inference": "为共同经历放弃个人发展机会"}, {"text": "去面谈；我更想拿到报酬、推进自己的计划，错过告别也接受。", "summary": "让自己的收入与发展优先", "scores": [0, 0, -2, 0, 0, 0], "measures": ["bond"], "label": "B", "excerpt": "去面谈；我更想拿到报酬、推进自己的计划，错过告别也接受。", "inference": "让自己的收入与发展优先"}], "type": "choice", "id": "q17", "stage": 2, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["bond"]}, {"category": "personal", "categoryLabel": "灯火归途", "topic": "回到哪一扇门", "weight": 1, "title": "你可以回到旧宅，也可以在城外租新屋。旧宅保存着家人的物件，也让你想起当年想离开的理由。", "context": "旧宅免房租，但家人会经常来；新屋安静自在，每月要多花两千元。若不选旧宅，家人会把它出租一年。", "role": "归来后的你", "authority": "你决定自己的关系、住处与公开表态；亲近的人也有自己的决定。", "options": [{"text": "住旧宅，省下房租；我愿意接受家人常来，把钱留给别的生活。", "summary": "优先省钱，接受较少私人空间", "scores": [-1, 0, 0, 0, 0, 0], "measures": ["vision"], "label": "A", "excerpt": "住旧宅，省下房租；我愿意接受家人常来，把钱留给别的生活。", "inference": "优先省钱，接受较少私人空间"}, {"text": "租新屋，按自己的节奏生活；我愿意少存一些钱换独立空间。", "summary": "为个人生活空间承担费用", "scores": [0, 0, -2, 0, 0, 0], "measures": ["bond"], "label": "B", "excerpt": "租新屋，按自己的节奏生活；我愿意少存一些钱换独立空间。", "inference": "为个人生活空间承担费用"}, {"text": "先短租三个月，两边都不定下来；多付租金也比现在锁定一年更合适。", "summary": "付费保留一段观察和改变的余地", "scores": [0, 0, 0, 0, 0, -2], "measures": ["resolve"], "label": "C", "excerpt": "先短租三个月，两边都不定下来；多付租金也比现在锁定一年更合适。", "inference": "付费保留一段观察和改变的余地"}], "type": "choice", "id": "q18", "stage": 2, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["vision", "bond", "resolve"]}, {"category": "cosmos", "categoryLabel": "星海与圣杯", "topic": "回音是否必要", "weight": 0.9, "title": "深空观测计划招募长期志愿者：每月几个夜晚，持续二十年，仍可能没有回音。", "context": "同样的时间可以去做有明确进展的社区项目，也可以留给自己的爱好。三种安排都允许你选择，哪一种最吸引你？", "role": "圣杯前的御主", "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。", "options": [{"text": "参加观测；我想追问那个未知的问题，即使二十年没有可展示的成果。", "summary": "愿意为未知问题投入长期时间", "scores": [2, 0, 0, 0, 0, 0], "measures": ["vision"], "label": "A", "excerpt": "参加观测；我想追问那个未知的问题，即使二十年没有可展示的成果。", "inference": "愿意为未知问题投入长期时间"}, {"text": "参加社区项目；我想把时间用在能看到进度、确实改善身边生活的事情上。", "summary": "偏好可见的实际改善", "scores": [-1, 0, 1, 0, 0, 0], "measures": ["vision", "bond"], "label": "B", "excerpt": "参加社区项目；我想把时间用在能看到进度、确实改善身边生活的事情上。", "inference": "偏好可见的实际改善"}, {"text": "两种都不参加；我想把夜晚留给自己的游戏、旅行或创作，不再背一项长期责任。", "summary": "把空闲时间留给个人生活", "scores": [0, 0, -2, 0, 0, 0], "measures": ["bond"], "label": "C", "excerpt": "两种都不参加；我想把夜晚留给自己的游戏、旅行或创作，不再背一项长期责任。", "inference": "把空闲时间留给个人生活"}], "type": "choice", "id": "q19", "stage": 3, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["vision", "bond"]}, {"category": "cosmos", "categoryLabel": "星海与圣杯", "topic": "知道结局以后", "weight": 0.9, "title": "一本书准确写下你过去的每个细节，最后一页却说十年后你会输掉最看重的斗争。", "context": "中间十年全是空白。你无法证明未来不可改变，却已经为那场斗争准备多年。", "role": "圣杯前的御主", "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。", "options": [{"text": "继续原定目标；就算结局不理想，我仍想把这件事做到底。", "summary": "结果不利时仍保留原有志向", "scores": [2, 0, 0, 0, 0, 0], "measures": ["vision"], "label": "A", "excerpt": "继续原定目标；就算结局不理想，我仍想把这件事做到底。", "inference": "结果不利时仍保留原有志向"}, {"text": "彻底换一条路，接受旧准备作废；我更想试一次未被写下的人生。", "summary": "为新的可能性放下旧安排", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "label": "B", "excerpt": "彻底换一条路，接受旧准备作废；我更想试一次未被写下的人生。", "inference": "为新的可能性放下旧安排"}, {"text": "把目标改小，先做一年内能得回报的事；我不想再为可能失败的远景投入十年。", "summary": "缩短目标期限，优先可获得的回报", "scores": [-2, 0, 0, 0, 0, 0], "measures": ["vision"], "label": "C", "excerpt": "把目标改小，先做一年内能得回报的事；我不想再为可能失败的远景投入十年。", "inference": "缩短目标期限，优先可获得的回报"}], "type": "choice", "id": "q20", "stage": 3, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["vision"]}, {"category": "cosmos", "categoryLabel": "星海与圣杯", "topic": "记忆是否可以延续", "weight": 1, "title": "一个装置能用旧记录，重建一位对你很重要的人的对话影像。它明确不是本人，也没有原来的意识。", "context": "你可以随时关闭它。只是有些从未听过的回答，会由装置推算出来。你想怎样对待这份重建？", "role": "圣杯前的御主", "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。", "options": [{"text": "启用它；即使只是模拟，能继续听到熟悉的回应也会让我好受一点。", "summary": "接受模拟对话带来的情感安慰", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "label": "A", "excerpt": "启用它；即使只是模拟，能继续听到熟悉的回应也会让我好受一点。", "inference": "接受模拟对话带来的情感安慰"}, {"text": "只听真实录音；我不想把程序新编的话当作这个人曾说过的回应。", "summary": "对重建内容保留事实边界", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "label": "B", "excerpt": "只听真实录音；我不想把程序新编的话当作这个人曾说过的回应。", "inference": "对重建内容保留事实边界"}, {"text": "把记录封存；反复回看让我难以开始新生活，我想先走出来。", "summary": "为自己的新生活暂停回看旧记录", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "label": "C", "excerpt": "把记录封存；反复回看让我难以开始新生活，我想先走出来。", "inference": "为自己的新生活暂停回看旧记录"}], "type": "choice", "id": "q21", "stage": 3, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": []}, {"category": "attitude", "categoryLabel": "星海与圣杯 · 个人态度", "topic": "长久约定与改道", "weight": 0.75, "title": "已经答应的安排，即使临时出现更吸引我的机会，我通常也会照原约进行。", "context": "想一想最近几次时间撞车时，你实际怎样处理已经答应的安排。", "role": "圣杯前的御主", "authority": "依据自己处理既定安排和新机会的习惯选择认同程度。", "options": [{"label": "1", "text": "完全不像我", "scores": [0, 0, 0, 0, -2, 0], "excerpt": "完全不像我", "summary": "遇到新机会时较愿意重新安排", "scaleValue": -2, "measures": ["order"], "inference": "遇到新机会时较愿意重新安排"}, {"label": "2", "text": "大多不像我", "scores": [0, 0, 0, 0, -1.3333333333333333, 0], "excerpt": "大多不像我", "summary": "遇到新机会时较愿意重新安排", "scaleValue": -1.3333333333333333, "measures": ["order"], "inference": "遇到新机会时较愿意重新安排"}, {"label": "3", "text": "有点不像我", "scores": [0, 0, 0, 0, -0.6666666666666666, 0], "excerpt": "有点不像我", "summary": "遇到新机会时较愿意重新安排", "scaleValue": -0.6666666666666666, "measures": ["order"], "inference": "遇到新机会时较愿意重新安排"}, {"label": "4", "text": "一半像，一半不像", "scores": [0, 0, 0, 0, 0, 0], "excerpt": "一半像，一半不像", "summary": "是否维持约定取决于具体安排", "scaleValue": 0, "measures": ["order"], "inference": "是否维持约定取决于具体安排"}, {"label": "5", "text": "有点像我", "scores": [0, 0, 0, 0, 0.6666666666666666, 0], "excerpt": "有点像我", "summary": "较愿意优先履行已经答应的安排", "scaleValue": 0.6666666666666666, "measures": ["order"], "inference": "较愿意优先履行已经答应的安排"}, {"label": "6", "text": "大多是我", "scores": [0, 0, 0, 0, 1.3333333333333333, 0], "excerpt": "大多是我", "summary": "较愿意优先履行已经答应的安排", "scaleValue": 1.3333333333333333, "measures": ["order"], "inference": "较愿意优先履行已经答应的安排"}, {"label": "7", "text": "完全是我", "scores": [0, 0, 0, 0, 2, 0], "excerpt": "完全是我", "summary": "较愿意优先履行已经答应的安排", "scaleValue": 2, "measures": ["order"], "inference": "较愿意优先履行已经答应的安排"}], "type": "scale", "statement": "已经答应的安排，即使临时出现更吸引我的机会，我通常也会照原约进行。", "id": "q22", "stage": 3, "rationale": "只询问承诺与改约，不将它等同于计划偏好或人格中的J/P。", "measures": ["order"]}, {"id": "b07", "stage": 3, "category": "behavior", "categoryLabel": "星海与圣杯 · 日常抉择", "topic": "新装置的说明", "title": "你得到一个从没用过的新装置，说明书既有一页真实操作示例，也有一页原理图和可能用途。", "context": "两页同样短，装置没有危险，暂时也没有必须完成的任务。你会先翻哪一页？", "role": "试用新装置的御主", "authority": "这是安全的日常装置，你只决定自己最想先看哪一部分说明。", "type": "choice", "weight": 0.8, "rationale": "和b03一起询问理解新事物的起点；实际示例≠缺想象，可能用途≠不可靠。", "options": [{"text": "先看它为什么这样运作、还能用来做什么；明白框架后，再看具体示例。", "summary": "先理解原理和可能延伸", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"information": 1}, "label": "A", "excerpt": "先看它为什么这样运作、还能用来做什么；明白框架后，再看具体示例。", "inference": "先理解原理和可能延伸"}, {"text": "先看一次从头到尾的实际示例；知道它具体做了什么，再去理解原理。", "summary": "先理解具体操作和事实", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"information": -1}, "label": "B", "excerpt": "先看一次从头到尾的实际示例；知道它具体做了什么，再去理解原理。", "inference": "先理解具体操作和事实"}], "measures": [], "behaviorFacet": "information"}, {"id": "b08", "stage": 3, "category": "behavior", "categoryLabel": "星海与圣杯 · 日常抉择", "topic": "选择前的期限", "title": "圣杯仪式后你要住一个月。两间条件相近的房都能保留到周五，今天是周二，现有资料已经够作决定。", "context": "早定和晚定价格相同，等到周五也不会失去房源。你更倾向哪一种做法？", "role": "选择短期住处的御主", "authority": "两处住处条件和费用相近，不涉及他人的去留；由你决定何时定下自己的选择。", "type": "choice", "weight": 0.8, "rationale": "控制信息不足和价格风险后，询问定案本身与保留可能带来的偏好；不据此判断果断程度。", "options": [{"text": "再保留两天，看看自己的想法会不会变；暂时不定并不会一直占着我的心思。", "summary": "愿意保留到期限前再作选择", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"structure": 1}, "label": "A", "excerpt": "再保留两天，看看自己的想法会不会变；暂时不定并不会一直占着我的心思。", "inference": "愿意保留到期限前再作选择"}, {"text": "今天就定下来，之后不再比较；结束这个待决定的事项，我会更轻松。", "summary": "倾向尽早结束已可决定的事项", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "behavior": {"structure": -1}, "label": "B", "excerpt": "今天就定下来，之后不再比较；结束这个待决定的事项，我会更轻松。", "inference": "倾向尽早结束已可决定的事项"}], "measures": [], "behaviorFacet": "structure"}, {"category": "cosmos", "categoryLabel": "星海与圣杯", "topic": "向未知留下什么", "weight": 1, "title": "一艘探测船将把来自地球的记录送入深空。你能上传属于自己的十分钟，之后再无补寄的机会。", "context": "你不知道谁会看到，也不会收到回信。不必代表全人类；十分钟属于你，你想把什么留在那里？", "role": "圣杯前的御主", "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。", "options": [{"text": "留下自己的名字、作品和成就；我希望有一天还有谁知道我曾来过。", "summary": "希望自己的名字和作品被远方看见", "scores": [0, 0, 0, 2, 0, 0], "measures": ["presence"], "label": "A", "excerpt": "留下自己的名字、作品和成就；我希望有一天还有谁知道我曾来过。", "inference": "希望自己的名字和作品被远方看见"}, {"text": "录下一顿与亲近者吃的饭；我最想留下这几个具体的人和相处声音。", "summary": "把有限记录留给具体亲近关系", "scores": [0, 0, 1, 0, 0, 0], "measures": ["bond"], "label": "B", "excerpt": "录下一顿与亲近者吃的饭；我最想留下这几个具体的人和相处声音。", "inference": "把有限记录留给具体亲近关系"}, {"text": "留下还没解开的几个问题；我更想让这份记录继续引出新的追问。", "summary": "把记录用在未完成的问题上", "scores": [1, 0, 0, 0, 0, 0], "measures": ["vision"], "label": "C", "excerpt": "留下还没解开的几个问题；我更想让这份记录继续引出新的追问。", "inference": "把记录用在未完成的问题上"}, {"text": "不上传；对不会有回应的展示我兴趣不大，想把时间用在眼前生活。", "summary": "不为遥远的可见性投入时间", "scores": [-1, 0, 0, -1, 0, 0], "measures": ["presence", "vision"], "label": "D", "excerpt": "不上传；对不会有回应的展示我兴趣不大，想把时间用在眼前生活。", "inference": "不为遥远的可见性投入时间"}], "type": "choice", "id": "q23", "stage": 3, "rationale": "仅把选项明确陈述的取舍计入相应维度；零分维度表示这题没有提供依据。", "measures": ["presence", "bond", "vision"]}, {"category": "wish", "categoryLabel": "星海与圣杯", "topic": "唯一的圣杯愿望", "weight": 0.65, "title": "圣杯能实现以下一个愿望。结果可靠，不伤害别人，也不附带陷阱。", "context": "只能选一项，其他愿望不会顺带实现。钱可以买到的东西仍可以买，但买不到额外寿命、顶尖技艺或真诚认可。按你此刻最想要的选。", "role": "圣杯前的御主", "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。", "options": [{"text": "得到一亿元可自由支配、来源合法的财富；买房、旅行、享受生活，以后不再为钱工作。", "summary": "把唯一愿望用于自己的财富与生活自由", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "wishPriority": "wealth", "label": "A", "excerpt": "得到一亿元可自由支配、来源合法的财富；买房、旅行、享受生活，以后不再为钱工作。", "inference": "把唯一愿望用于自己的财富与生活自由"}, {"text": "自己多拥有三十年健康时光，身体停留在理想状态；我最想继续体验和享受人生。", "summary": "把唯一愿望用于自己的健康与时间", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "wishPriority": "health", "label": "B", "excerpt": "自己多拥有三十年健康时光，身体停留在理想状态；我最想继续体验和享受人生。", "inference": "把唯一愿望用于自己的健康与时间"}, {"text": "掌握一项自己最想要的顶尖技艺；钱和名声不会随之保证，但我终于能做到那件事。", "summary": "把唯一愿望用于个人技艺", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "wishPriority": "mastery", "label": "C", "excerpt": "掌握一项自己最想要的顶尖技艺；钱和名声不会随之保证，但我终于能做到那件事。", "inference": "把唯一愿望用于个人技艺"}, {"text": "凭自己的一项真实成就得到世界范围的认可；我想被看见，也愿意生活受到关注。", "summary": "把唯一愿望用于公开认可", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "wishPriority": "recognition", "label": "D", "excerpt": "凭自己的一项真实成就得到世界范围的认可；我想被看见，也愿意生活受到关注。", "inference": "把唯一愿望用于公开认可"}, {"text": "治好一位亲近者现有医疗仍无法治好的重病；我想把这次机会留给这个具体的人。", "summary": "把唯一愿望用于亲近者的健康", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "wishPriority": "close_person", "label": "E", "excerpt": "治好一位亲近者现有医疗仍无法治好的重病；我想把这次机会留给这个具体的人。", "inference": "把唯一愿望用于亲近者的健康"}, {"text": "让一处长期缺水的地区获得稳定清洁水源；这个地方会改变，我自己的生活不会额外变好。", "summary": "把唯一愿望用于一地公共生活的改善", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "wishPriority": "public_good", "label": "F", "excerpt": "让一处长期缺水的地区获得稳定清洁水源；这个地方会改变，我自己的生活不会额外变好。", "inference": "把唯一愿望用于一地公共生活的改善"}, {"label": "G", "text": "暂时不用，把圣杯保留下来；我现在没有一个愿意为之放弃其他可能的愿望。", "summary": "这次暂不锁定愿望，保留将来再决定的机会", "inference": "这次暂不锁定愿望，保留将来再决定的机会", "scores": [0, 0, 0, 0, 0, 0], "measures": [], "excerpt": "暂时不用，把圣杯保留下来；我现在没有一个愿意为之放弃其他可能的愿望。", "wishPriority": "keep_options"}], "type": "choice", "id": "q24", "stage": 3, "rationale": "直接记录一次愿望优先级，不从财富偏好推出冷漠、从救人推出整体善良、从健康推出独行。单题不概括人格。", "measures": []}];
+const { analyzeBehavior, rankBehavior } = FateBehavior;
+const { buildMatchExplanation } = FateExplanations;
+const { WISH_PRIORITIES, wishAffinity } = FateWish;
 
-const STORAGE_KEY = 'fate-summoning-contract-v9';
+const STORAGE_KEY = 'fate-summoning-contract-v11';
 const MATCHING_VERSION = MATCH_MODEL_VERSION;
-const SCENARIO_NOTE = '24个选择分成四章。七道历史战争题都由故事当事人亲自作出选择并承担后果；各题是独立的可能处境，不预设上一题的决定。三道爱情题、三道可略过的审美题与两道量表提供其他线索。';
+const SCENARIO_NOTE = '32个选择分成四章，包含七道当事人视角的历史战争题、三道亲密关系题、八道关于相处与做事方式的情境题。审美只作故事回顾，不参与人格与英灵匹配。';
 
 const AXES = [
   { id: 'vision', name: '愿景', low: '务实', high: '理想' },
@@ -357,1584 +707,7 @@ const STAGES = [
   }
 ];
 
-const QUESTIONS = [
-  {
-    "category": "intimacy",
-    "categoryLabel": "远行前 · 亲密关系",
-    "topic": "两年的距离",
-    "weight": 0.9,
-    "title": "相爱的人要去另一座城工作两年，你刚得到一份不愿放弃的工作。",
-    "context": "月底前必须答复。对方不要求你跟随，也不愿放弃机会。你准备怎样处理这段距离？",
-    "role": "远行前的你",
-    "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。",
-    "options": [
-      {
-        "label": "A",
-        "text": "和对方一起迁走，放下刚得到的工作；重新起步，让日常仍在一起。",
-        "scores": [
-          0,
-          0,
-          2,
-          0,
-          0,
-          1
-        ],
-        "excerpt": "和对方一起迁走，放下刚得到的工作；重新起步，让日常仍在一…",
-        "summary": "为共同生活承担自己的转变"
-      },
-      {
-        "label": "B",
-        "text": "留下，约定见面和联系的节奏；接受不能朝夕相伴，也继续经营关系。",
-        "scores": [
-          0,
-          1,
-          1,
-          0,
-          2,
-          0
-        ],
-        "excerpt": "留下，约定见面和联系的节奏；接受不能朝夕相伴，也继续经营…",
-        "summary": "用可遵守的约定承受分离"
-      },
-      {
-        "label": "C",
-        "text": "认真告别，不要求谁留下；保留各自的生活，也不让彼此等上两年。",
-        "scores": [
-          0,
-          0,
-          -2,
-          0,
-          0,
-          1
-        ],
-        "excerpt": "认真告别，不要求谁留下；保留各自的生活，也不让彼此等上两…",
-        "summary": "承认相爱仍有边界"
-      }
-    ],
-    "type": "choice",
-    "id": "q01",
-    "stage": 0
-  },
-  {
-    "category": "intimacy",
-    "categoryLabel": "远行前 · 亲密关系",
-    "topic": "相处的边界",
-    "weight": 0.9,
-    "title": "你和恋人准备搬到一起。对方喜欢把日程一起安排，你却需要每天留一段完全独处的时间。",
-    "context": "合租最省钱；分开住，就要挤掉原本留给旅行的预算。你想怎样划出相处的边界？",
-    "role": "远行前的你",
-    "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。",
-    "options": [
-      {
-        "label": "A",
-        "text": "约好每天一小时各自待着，其他日程尽量一起安排。",
-        "scores": [
-          0,
-          1,
-          2,
-          0,
-          2,
-          0
-        ],
-        "excerpt": "约好每天一小时各自待着，其他日程尽量一起安排",
-        "summary": "用明确约定给亲密关系留出各自空间"
-      },
-      {
-        "label": "B",
-        "text": "不设固定时段，想独处时直接说；接受对方偶尔会觉得突然。",
-        "scores": [
-          0,
-          -1,
-          0,
-          2,
-          -1,
-          1
-        ],
-        "excerpt": "不设固定时段，想独处时直接说；接受对方偶尔会觉得突然",
-        "summary": "宁愿当面表达变化，也不把相处排成固定日程"
-      },
-      {
-        "label": "C",
-        "text": "暂不合租，各住附近；多付房租，也保留各自生活的节奏。",
-        "scores": [
-          -1,
-          0,
-          -2,
-          -1,
-          -1,
-          1
-        ],
-        "excerpt": "暂不合租，各住附近；多付房租，也保留各自生活的节奏",
-        "summary": "愿意承担额外开支来保留自己的边界"
-      }
-    ],
-    "type": "choice",
-    "id": "q02",
-    "stage": 0
-  },
-  {
-    "category": "attitude",
-    "categoryLabel": "远行前 · 个人态度",
-    "topic": "被理解与被赞许",
-    "weight": 0.75,
-    "title": "比起被许多人称赞，我更希望被真正了解我的人信任。",
-    "context": "这句话有多像你？",
-    "role": "远行前的你",
-    "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。",
-    "options": [
-      {
-        "label": "1",
-        "text": "完全不像我",
-        "scores": [
-          0,
-          0,
-          0,
-          2,
-          0,
-          0
-        ],
-        "excerpt": "对「比起被许多人称赞，我更希望被真正了解我的人信任。」：完全不像我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": -2
-      },
-      {
-        "label": "2",
-        "text": "大多不像我",
-        "scores": [
-          0,
-          0,
-          0,
-          1.3333333333333333,
-          0,
-          0
-        ],
-        "excerpt": "对「比起被许多人称赞，我更希望被真正了解我的人信任。」：大多不像我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": -1.3333333333333333
-      },
-      {
-        "label": "3",
-        "text": "有点不像我",
-        "scores": [
-          0,
-          0,
-          0,
-          0.6666666666666666,
-          0,
-          0
-        ],
-        "excerpt": "对「比起被许多人称赞，我更希望被真正了解我的人信任。」：有点不像我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": -0.6666666666666666
-      },
-      {
-        "label": "4",
-        "text": "一半像，一半不像",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ],
-        "excerpt": "对「比起被许多人称赞，我更希望被真正了解我的人信任。」：一半像，一半不像",
-        "summary": "对这句话的认同程度",
-        "scaleValue": 0
-      },
-      {
-        "label": "5",
-        "text": "有点像我",
-        "scores": [
-          0,
-          0,
-          0,
-          -0.6666666666666666,
-          0,
-          0
-        ],
-        "excerpt": "对「比起被许多人称赞，我更希望被真正了解我的人信任。」：有点像我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": 0.6666666666666666
-      },
-      {
-        "label": "6",
-        "text": "大多是我",
-        "scores": [
-          0,
-          0,
-          0,
-          -1.3333333333333333,
-          0,
-          0
-        ],
-        "excerpt": "对「比起被许多人称赞，我更希望被真正了解我的人信任。」：大多是我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": 1.3333333333333333
-      },
-      {
-        "label": "7",
-        "text": "完全是我",
-        "scores": [
-          0,
-          0,
-          0,
-          -2,
-          0,
-          0
-        ],
-        "excerpt": "对「比起被许多人称赞，我更希望被真正了解我的人信任。」：完全是我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": 2
-      }
-    ],
-    "type": "scale",
-    "statement": "比起被许多人称赞，我更希望被真正了解我的人信任。",
-    "id": "q03",
-    "stage": 0
-  },
-  {
-    "category": "culture",
-    "categoryLabel": "远行前 · 声音偏好",
-    "topic": "启程前的一首歌",
-    "weight": 0.4,
-    "title": "长途车还没发动，你有一首歌的时间。",
-    "context": "四段音乐一样长，你会先点开哪一段？",
-    "role": "远行前的你",
-    "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。",
-    "options": [
-      {
-        "label": "A",
-        "text": "一首多人合唱：独唱的人轮流退后，最后所有声音一起进来。",
-        "scores": [
-          1,
-          0,
-          2,
-          1,
-          0,
-          0
-        ],
-        "excerpt": "一首多人合唱：独唱的人轮流退后，最后所有声音一起进来",
-        "summary": "容易留意不同的人如何汇成共同的声音"
-      },
-      {
-        "label": "B",
-        "text": "只有弦乐，短短的旋律每次回来都会变一点。",
-        "scores": [
-          0,
-          2,
-          -1,
-          -1,
-          0,
-          0
-        ],
-        "excerpt": "只有弦乐，短短的旋律每次回来都会变一点",
-        "summary": "愿意跟随细节和反复变化慢慢听下去"
-      },
-      {
-        "label": "C",
-        "text": "节拍不太整齐的现场录音，能听见即兴、失误和观众起哄。",
-        "scores": [
-          0,
-          -2,
-          0,
-          2,
-          -1,
-          1
-        ],
-        "excerpt": "节拍不太整齐的现场录音，能听见即兴、失误和观众起哄",
-        "summary": "会被现场的变化和直接的表达吸引"
-      },
-      {
-        "label": "D",
-        "text": "熟悉的旧歌，还是原来那个版本，连停顿都没有改变。",
-        "scores": [
-          -1,
-          0,
-          0,
-          -1,
-          2,
-          0
-        ],
-        "excerpt": "熟悉的旧歌，还是原来那个版本，连停顿都没有改变",
-        "summary": "熟悉而稳定的声音也能给你足够的内容"
-      },
-      {
-        "label": "E",
-        "text": "这几段现在都不想听，先略过。",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ],
-        "excerpt": "这几段现在都不想听，先略过",
-        "summary": "本题不提供偏好线索",
-        "neutral": true
-      }
-    ],
-    "type": "choice",
-    "id": "q04",
-    "stage": 0
-  },
-  {
-    "category": "personal",
-    "categoryLabel": "远行之前",
-    "topic": "怎样开始一段新生活",
-    "weight": 1,
-    "title": "出发前，你收到两份邀请。",
-    "context": "一家新工作室希望你用三个月积蓄入伙，半年内没有固定收入；另一份工作能付房租，却会占满你创作的白天。你也可以暂缓远行。",
-    "role": "远行前的你",
-    "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。",
-    "options": [
-      {
-        "label": "A",
-        "text": "加入工作室，先把积蓄投进去；接受这半年可能一无所获。",
-        "scores": [
-          2,
-          -1,
-          -1,
-          0,
-          -1,
-          2
-        ],
-        "excerpt": "加入工作室，先把积蓄投进去；接受这半年可能一无所获",
-        "summary": "愿意为尚未兑现的可能先承担损失"
-      },
-      {
-        "label": "B",
-        "text": "接下能付房租的工作，把自己的创作放到晚上。",
-        "scores": [
-          -2,
-          1,
-          0,
-          0,
-          2,
-          1
-        ],
-        "excerpt": "接下能付房租的工作，把自己的创作放到晚上",
-        "summary": "先建立能持续生活的基础，再给目标留位置"
-      },
-      {
-        "label": "C",
-        "text": "暂缓远行，等自己有六个月余粮再走；接受两份邀请都不再等我。",
-        "scores": [
-          0,
-          2,
-          0,
-          0,
-          1,
-          -2
-        ],
-        "excerpt": "暂缓远行，等自己有六个月余粮再走；接受两份邀请都不再等我",
-        "summary": "宁愿错过眼前机会，也想留出承受变化的余地"
-      }
-    ],
-    "type": "choice",
-    "id": "q05",
-    "stage": 0
-  },
-  {
-    "category": "personal",
-    "categoryLabel": "远行之前",
-    "topic": "车站的最后一句话",
-    "weight": 1,
-    "title": "你已走到列车门边，送行的人还在站台另一头。那句一直没说出口的话，又一次浮上来。",
-    "context": "广播在催促上车。你想怎样结束这场告别？",
-    "role": "远行前的你",
-    "authority": "只决定自己的去留、表达与承诺，也给对方同样的选择。",
-    "options": [
-      {
-        "label": "A",
-        "text": "回头去把话说完，接受赶不上这班车。",
-        "scores": [
-          1,
-          0,
-          1,
-          2,
-          -1,
-          2
-        ],
-        "excerpt": "回头去把话说完，接受赶不上这班车",
-        "summary": "宁愿当下承担损失，也想把重要的话直接说出"
-      },
-      {
-        "label": "B",
-        "text": "先上车，再把话写成消息发出，让对方按自己的节奏读。",
-        "scores": [
-          0,
-          1,
-          0,
-          -1,
-          2,
-          1
-        ],
-        "excerpt": "先上车，再把话写成消息发出，让对方按自己的节奏读",
-        "summary": "会为表达换一种能继续前行的方式"
-      },
-      {
-        "label": "C",
-        "text": "只挥手，不再补充；之后用自己的行动回应这段关系。",
-        "scores": [
-          -1,
-          -1,
-          -1,
-          -1,
-          1,
-          2
-        ],
-        "excerpt": "只挥手，不再补充；之后用自己的行动回应这段关系",
-        "summary": "有些在意不急于说清，而放在之后的行动里"
-      }
-    ],
-    "type": "choice",
-    "id": "q06",
-    "stage": 0
-  },
-  {
-    "category": "war",
-    "categoryLabel": "军旗之下 · 故事改写",
-    "topic": "渡口对面的故人",
-    "weight": 1,
-    "title": "你与曾一起学武的好友分属敌对两方。两军约定，由你们在渡口决斗，胜者一方通行。",
-    "context": "你已经答应赴约。不赴约就会失去渡口，也会背上怯战的名声；赴约则可能亲手杀死好友。天黑之前，你必须作出决定。",
-    "role": "赴约的战士",
-    "authority": "你决定自己是否赴约、怎样作战；更改决斗约定需要对方同意。",
-    "options": [
-      {
-        "label": "A",
-        "text": "按约赴战，全力出手；接受这一战可能只剩一人回来。",
-        "scores": [
-          1,
-          0,
-          -1,
-          0,
-          2,
-          2
-        ],
-        "excerpt": "按约赴战，全力出手；接受这一战可能只剩一人回来",
-        "summary": "即使对手是故人，也愿意承担自己许下的战约"
-      },
-      {
-        "label": "B",
-        "text": "先请求改期，争取另订通行办法；接受被指责拖延，也可能失去渡口。",
-        "scores": [
-          0,
-          2,
-          2,
-          0,
-          -1,
-          -1
-        ],
-        "excerpt": "先请求改期，争取另订通行办法；接受被指责拖延，也可能失去…",
-        "summary": "愿意冒着失去先机的风险，为故人与同袍另找出路"
-      },
-      {
-        "label": "C",
-        "text": "拒绝赴约，接受本方失去渡口，并向同袍说明；承受怯战的指责，也不亲手杀死故人。",
-        "scores": [
-          2,
-          0,
-          1,
-          1,
-          -2,
-          1
-        ],
-        "excerpt": "拒绝赴约，接受本方失去渡口，并向同袍说明；承受怯战的指责…",
-        "summary": "愿意自己承担失约的指责，为不愿越过的界限付代价"
-      }
-    ],
-    "type": "choice",
-    "inspiration": {
-      "servantId": "cu",
-      "story": "《夺牛长征记》中库丘林与同门好友费迪亚分属敌对阵营、在渡口决斗的传说母题；题目中的通行约定与可选行动为原创推演。",
-      "kind": "爱尔兰英雄传说改写",
-      "sourceUrl": "https://www.britannica.com/topic/Cu-Chulainn"
-    },
-    "id": "q07",
-    "stage": 1,
-    "sourceLabel": "故事原型参考 · 匿名改写"
-  },
-  {
-    "category": "war",
-    "categoryLabel": "军旗之下 · 故事改写",
-    "topic": "这一箭的代价",
-    "weight": 1,
-    "title": "停战协议已经写好：以你射出的箭落处划定边界。你知道，只有耗尽生命，才能把这一箭送到足够远的地方。",
-    "context": "若不开弓，两军将在日落后重新交战。没有人能替你射这一箭，你也可以拒绝。弓已经在手里，你会怎样做？",
-    "role": "边界前的弓手",
-    "authority": "你只决定是否射箭，以及为此提出什么条件；不能保证别人一定遵守停战。",
-    "options": [
-      {
-        "label": "A",
-        "text": "照约全力射出，把生命交在这一箭里；让身后的人得到结束战争的机会。",
-        "scores": [
-          2,
-          0,
-          2,
-          0,
-          1,
-          2
-        ],
-        "excerpt": "照约全力射出，把生命交在这一箭里；让身后的人得到结束战争…",
-        "summary": "愿意由自己承担不可挽回的代价，为共同的停战机会作决定"
-      },
-      {
-        "label": "B",
-        "text": "先要求双方公开宣誓遵守新边界，再拉弓；接受拖过日落、谈判破裂的风险。",
-        "scores": [
-          1,
-          2,
-          1,
-          0,
-          2,
-          -1
-        ],
-        "excerpt": "先要求双方公开宣誓遵守新边界，再拉弓；接受拖过日落、谈判…",
-        "summary": "即使自己已经愿意付出，也希望先让承诺有共同约束"
-      },
-      {
-        "label": "C",
-        "text": "放下弓，拒绝用自己的生命换取边界；接受战争可能继续，也接受旁人的失望。",
-        "scores": [
-          0,
-          0,
-          -2,
-          0,
-          -1,
-          1
-        ],
-        "excerpt": "放下弓，拒绝用自己的生命换取边界；接受战争可能继续，也接…",
-        "summary": "会为自己保留拒绝牺牲的权利，也承认这一决定的后果"
-      }
-    ],
-    "type": "choice",
-    "inspiration": {
-      "servantId": "arash",
-      "story": "阿拉什以一箭划定伊朗与图兰边界、付出生命的伊朗英雄传说；期限、条约及可选行动为原创推演。",
-      "kind": "伊朗英雄传说改写",
-      "sourceUrl": "https://www.iranicaonline.org/articles/aras-avestan-erexsa/"
-    },
-    "id": "q08",
-    "stage": 1,
-    "sourceLabel": "故事原型参考 · 匿名改写"
-  },
-  {
-    "category": "war",
-    "categoryLabel": "军旗之下 · 故事改写",
-    "topic": "远方与归途",
-    "weight": 1,
-    "title": "你率领军队远征多年，终于来到一条大河前。你还想继续向东，士兵却拒绝再走，说他们只想回家。",
-    "context": "补给已渐难维持，强令前进可能引发哗变。退回去，你要亲口承认这场远征到此为止。你怎样回应自己的军队？",
-    "role": "亲率远征的统帅",
-    "authority": "你可决定远征是否继续，也要面对部下的去留；不能让疲惫与缺粮凭空消失。",
-    "options": [
-      {
-        "label": "A",
-        "text": "宣布返程，亲自带他们回去；把未到达的远方留在河对岸。",
-        "scores": [
-          -1,
-          0,
-          2,
-          1,
-          0,
-          2
-        ],
-        "excerpt": "宣布返程，亲自带他们回去；把未到达的远方留在河对岸",
-        "summary": "愿意收住自己的远征愿望，把同行者带回家"
-      },
-      {
-        "label": "B",
-        "text": "暂停推进，补给整顿后再与士兵商议；接受驻留消耗余粮，也可能仍无人愿意继续。",
-        "scores": [
-          0,
-          2,
-          1,
-          0,
-          0,
-          -1
-        ],
-        "excerpt": "暂停推进，补给整顿后再与士兵商议；接受驻留消耗余粮，也可…",
-        "summary": "愿意付出等待的代价，在放弃目标前重新厘清军队能否继续"
-      },
-      {
-        "label": "C",
-        "text": "让不愿继续的人返程，只带自愿者向前；接受队伍缩小、前路可能无人接应。",
-        "scores": [
-          2,
-          -1,
-          -1,
-          0,
-          -1,
-          2
-        ],
-        "excerpt": "让不愿继续的人返程，只带自愿者向前；接受队伍缩小、前路可…",
-        "summary": "仍可能为未见的远方继续前行，但让他人保留离开的权利"
-      }
-    ],
-    "type": "choice",
-    "inspiration": {
-      "servantId": "iskandar",
-      "story": "亚历山大在希发西斯河前面对军队拒绝继续东进、最终决定折返的历史背景；所有可选行动均为原创推演。",
-      "kind": "历史背景改写",
-      "sourceUrl": "https://www.livius.org/sources/content/arrian/anabasis/mutiny-at-the-hyphasis/"
-    },
-    "id": "q09",
-    "stage": 1,
-    "sourceLabel": "故事原型参考 · 匿名改写"
-  },
-  {
-    "category": "war",
-    "categoryLabel": "军旗之下 · 故事改写",
-    "topic": "王位与留下的人",
-    "weight": 1,
-    "title": "王城失守，你带着残部退到城外。逃难者等待护送，旧臣却催你保存兵力，准备夺回王位。",
-    "context": "你曾发誓守住这个国家。如今兵力只够优先做一件事；对方愿以你放弃王位为条件停战，但是否履约仍有风险。你怎样面对自己的败局？",
-    "role": "失去王城的君主",
-    "authority": "你可带领残部、谈判自己的退位；不能替平民承诺接受复国战争。",
-    "options": [
-      {
-        "label": "A",
-        "text": "带残部护送平民离开，暂缓复国；接受对方坐稳王位、回去的机会更小。",
-        "scores": [
-          1,
-          0,
-          2,
-          0,
-          0,
-          1
-        ],
-        "excerpt": "带残部护送平民离开，暂缓复国；接受对方坐稳王位、回去的机…",
-        "summary": "更愿意先守住眼前的人，即使自己的王国可能无法重建"
-      },
-      {
-        "label": "B",
-        "text": "率残部另寻据点，继续争取王位；接受沿途城镇再被卷入战事。",
-        "scores": [
-          2,
-          1,
-          -1,
-          1,
-          1,
-          2
-        ],
-        "excerpt": "率残部另寻据点，继续争取王位；接受沿途城镇再被卷入战事",
-        "summary": "仍想亲自延续尚未实现的王国愿景，也承担重新开战的责任"
-      },
-      {
-        "label": "C",
-        "text": "提出放弃王位，换取本部停战和平民离境；承担承诺落空、也难再号召旧部的风险。",
-        "scores": [
-          -1,
-          1,
-          1,
-          0,
-          -1,
-          1
-        ],
-        "excerpt": "提出放弃王位，换取本部停战和平民离境；承担承诺落空、也难…",
-        "summary": "愿意连同自己的身份一起放下，为结束败局争取条件"
-      }
-    ],
-    "type": "choice",
-    "inspiration": {
-      "servantId": "artoria",
-      "story": "亚瑟王文学中君主守护王国、王权崩解与终局责任的母题；退位停战、护送平民等具体处境与选项为原创推演。",
-      "kind": "不列颠王权传说改写",
-      "sourceUrl": "https://www.britannica.com/topic/King-Arthur"
-    },
-    "id": "q10",
-    "stage": 1,
-    "sourceLabel": "故事原型参考 · 匿名改写"
-  },
-  {
-    "category": "war",
-    "categoryLabel": "军旗之下 · 故事改写",
-    "topic": "自己的剑留下的伤",
-    "weight": 1,
-    "title": "你违背骑士誓约，救走了即将被处死的亲近之人。混战中，你杀死了昔日同袍；现在，他们的亲属要求你受审。",
-    "context": "敌军正在逼近，你的剑术对守城仍有用。你可以立即受审，也可以请求先作战、战后受审；是否获准，由对方决定。你怎样面对自己造成的后果？",
-    "role": "违誓的骑士",
-    "authority": "你决定是否交出武器、怎样请求弥补；不能用战功免除自己应受的追责。",
-    "options": [
-      {
-        "label": "A",
-        "text": "交出武器，立即受审；不让守城的需要成为推迟追责的理由。",
-        "scores": [
-          1,
-          0,
-          0,
-          0,
-          2,
-          2
-        ],
-        "excerpt": "交出武器，立即受审；不让守城的需要成为推迟追责的理由",
-        "summary": "即使自己仍有用，也愿意立即接受共同规则对自己的约束"
-      },
-      {
-        "label": "B",
-        "text": "承认责任，请求以普通战士身份守城，战后受审；若被拒绝，就交出武器。",
-        "scores": [
-          -1,
-          1,
-          2,
-          0,
-          0,
-          1
-        ],
-        "excerpt": "承认责任，请求以普通战士身份守城，战后受审；若被拒绝，就…",
-        "summary": "希望先亲身补上眼前的缺口，但不把自己的功劳当作免罪理由"
-      }
-    ],
-    "type": "choice",
-    "inspiration": {
-      "servantId": "lancelot",
-      "story": "兰斯洛特救出桂妮薇儿时杀死昔日圆桌同伴、使私人忠诚与共同誓约破裂的亚瑟王文学情节；守城和受审选项为原创推演。",
-      "kind": "亚瑟王文学改写",
-      "sourceUrl": "https://www.britannica.com/topic/Lancelot"
-    },
-    "id": "q11",
-    "stage": 1,
-    "sourceLabel": "故事原型参考 · 匿名改写"
-  },
-  {
-    "category": "war",
-    "categoryLabel": "军旗之下 · 故事改写",
-    "topic": "审判席前的签名",
-    "weight": 1,
-    "title": "你曾带着军旗鼓舞同袍，如今被敌方俘获，独自站在审判席前。审判者要求你公开撤回对使命的宣称。",
-    "context": "签下声明，他们承诺免于死刑，改为终身监禁；拒绝，审判将继续，你可能被处死。曾经的战友无法替你回答。",
-    "role": "受审的旗手",
-    "authority": "你只决定自己的陈述与签名；无法保证审判者会遵守承诺。",
-    "options": [
-      {
-        "label": "A",
-        "text": "拒绝签字，坚持自己相信的使命；接受可能因此失去生命。",
-        "scores": [
-          2,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "excerpt": "拒绝签字，坚持自己相信的使命；接受可能因此失去生命",
-        "summary": "愿意让自己的公开陈述与信念一致，即使后果由自己独自承受"
-      },
-      {
-        "label": "B",
-        "text": "签下撤回声明，先保住生命；接受公开否认曾坚信之事，也可能终身失去自由。",
-        "scores": [
-          -2,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "excerpt": "签下撤回声明，先保住生命；接受公开否认曾坚信之事，也可能…",
-        "summary": "面对生命与自由的威胁，可能先保全自己仍能活下去的现实"
-      }
-    ],
-    "type": "choice",
-    "inspiration": {
-      "servantId": "jeanne",
-      "story": "贞德在1431年审判中签署弃绝声明、被判终身监禁，随后被认定再犯并处死的历史背景；题目只截取当时的选择，不把承诺写成可靠保证。",
-      "kind": "法国历史人物背景改写",
-      "sourceUrl": "https://sourcebooks.fordham.edu/basis/joanofarc-trial.asp"
-    },
-    "id": "q12",
-    "stage": 1,
-    "sourceLabel": "故事原型参考 · 匿名改写"
-  },
-  {
-    "category": "intimacy",
-    "categoryLabel": "归来后 · 亲密关系",
-    "topic": "信任是否要公开站队",
-    "weight": 0.9,
-    "title": "有人指责你的伴侣曾在危急时舍弃同伴。对方说事情另有原因，希望你当众表明信任，但你没亲历那一幕。",
-    "context": "公开支持会把你的信誉一起押上；不站出来，对方也可能觉得自己被留在了人群之外。你会怎么做？",
-    "role": "归来后的你",
-    "authority": "你决定自己的关系、住处与公开表态；亲近的人也有自己的决定。",
-    "options": [
-      {
-        "label": "A",
-        "text": "先找能核对经过的人，再决定是否公开支持；接受伴侣觉得我不够信任。",
-        "scores": [
-          0,
-          2,
-          1,
-          -1,
-          1,
-          -1
-        ],
-        "excerpt": "先找能核对经过的人，再决定是否公开支持；接受伴侣觉得我不…",
-        "summary": "想把信任建立在自己能够确认的事情上，即使这需要等待"
-      },
-      {
-        "label": "B",
-        "text": "当众说我信任对方，但不替未见过的细节作证；以后证据不同，也接受一起面对质疑。",
-        "scores": [
-          1,
-          -1,
-          2,
-          2,
-          0,
-          2
-        ],
-        "excerpt": "当众说我信任对方，但不替未见过的细节作证；以后证据不同，…",
-        "summary": "会用公开站在对方身边的方式承担关系中的风险"
-      },
-      {
-        "label": "C",
-        "text": "私下陪对方去说明，不替任何人发言；接受这不是对方期待的支持。",
-        "scores": [
-          0,
-          1,
-          -2,
-          -1,
-          1,
-          0
-        ],
-        "excerpt": "私下陪对方去说明，不替任何人发言；接受这不是对方期待的支…",
-        "summary": "愿意在场，却仍希望两个人分别承担自己的判断与表达"
-      }
-    ],
-    "type": "choice",
-    "id": "q13",
-    "stage": 2
-  },
-  {
-    "category": "war",
-    "categoryLabel": "归来后 · 战争余波",
-    "topic": "败退之后的战报",
-    "weight": 1,
-    "title": "远征败退后，你回到后方。守卫要道的部将已被追责，朝廷却准备继续保留你的统帅之位。",
-    "context": "人是你选的，部署也经你批准。战报还等着你签字；如何处置由朝廷裁定，而伤者与缺粮的部队仍待安置。",
-    "role": "战后归来的统帅",
-    "authority": "你决定如何述职、是否请辞；不能替别人免罪，也不能决定朝廷怎样处置自己。",
-    "options": [
-      {
-        "label": "A",
-        "text": "向朝廷说明自己任人失当，公开请求降职；接受名位受损，也不把责任只留给部将。",
-        "scores": [
-          1,
-          1,
-          0,
-          1,
-          2,
-          1
-        ],
-        "excerpt": "向朝廷说明自己任人失当，公开请求降职；接受名位受损，也不…",
-        "summary": "愿意公开认领自己的失误，并让自己的名位付出代价"
-      },
-      {
-        "label": "B",
-        "text": "呈交完整的任命与部署记录，不主动请辞；接受审查，也继续承担善后。",
-        "scores": [
-          -1,
-          2,
-          1,
-          0,
-          2,
-          0
-        ],
-        "excerpt": "呈交完整的任命与部署记录，不主动请辞；接受审查，也继续承…",
-        "summary": "更愿意先让事实完整呈现，在调查中继续承担尚未结束的工作"
-      },
-      {
-        "label": "C",
-        "text": "先安置伤者、补足军粮，再呈上请罪书；接受延报被看作逃避追责。",
-        "scores": [
-          -1,
-          1,
-          2,
-          0,
-          -1,
-          1
-        ],
-        "excerpt": "先安置伤者、补足军粮，再呈上请罪书；接受延报被看作逃避追…",
-        "summary": "可能先亲自照顾败局中仍受苦的人，再面对自己迟来的问责"
-      }
-    ],
-    "type": "choice",
-    "id": "q14",
-    "stage": 2,
-    "inspiration": {
-      "servantId": "waver",
-      "story": "《三国志·诸葛亮传》记载街亭失利后诸葛亮上疏认领任人失当等责任，请求自贬三等；朝廷保留职位的处境及三种应对为原创推演。",
-      "kind": "中国历史人物背景改写",
-      "sourceUrl": "https://zh.wikisource.org/wiki/三國志/卷35"
-    },
-    "sourceLabel": "故事原型参考 · 匿名改写"
-  },
-  {
-    "category": "culture",
-    "categoryLabel": "归来后 · 观看偏好",
-    "topic": "回城后的放映",
-    "weight": 0.4,
-    "title": "一场旧片重映，导演只留下三个剪辑版本：重逢时说清误会、重逢后一起吃饭、或让两人擦肩而过。",
-    "context": "你更想看哪一种结尾？",
-    "role": "归来后的你",
-    "authority": "你决定自己的关系、住处与公开表态；亲近的人也有自己的决定。",
-    "options": [
-      {
-        "label": "A",
-        "text": "两人把旧日误会说开，约好明年还在这里见。",
-        "scores": [
-          1,
-          0,
-          0,
-          2,
-          2,
-          0
-        ],
-        "excerpt": "两人把旧日误会说开，约好明年还在这里见",
-        "summary": "想看承诺被说清并继续"
-      },
-      {
-        "label": "B",
-        "text": "两人去吃一碗面，谁也没提以后，镜头留在并肩的沉默。",
-        "scores": [
-          -1,
-          0,
-          0,
-          -2,
-          -1,
-          0
-        ],
-        "excerpt": "两人去吃一碗面，谁也没提以后，镜头留在并肩的沉默",
-        "summary": "愿意让共同生活先于结论"
-      },
-      {
-        "label": "C",
-        "text": "列车挡住镜头，等车过去，两人已经各自离开。",
-        "scores": [
-          0,
-          0,
-          -1,
-          -2,
-          -1,
-          -1
-        ],
-        "excerpt": "列车挡住镜头，等车过去，两人已经各自离开",
-        "summary": "接受未完成关系留在画面外"
-      },
-      {
-        "label": "D",
-        "text": "这些结尾都不想看，先不选。",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ],
-        "excerpt": "这些结尾都不想看，先不选",
-        "summary": "不以这次影片偏好参与匹配",
-        "neutral": true
-      }
-    ],
-    "type": "choice",
-    "id": "q15",
-    "stage": 2
-  },
-  {
-    "category": "culture",
-    "categoryLabel": "归来后 · 阅读偏好",
-    "topic": "一封被退回的信",
-    "weight": 0.4,
-    "title": "展厅摆着三份小说手稿，都是已经公开的影印件。",
-    "context": "它们都与一封信有关。你想先翻哪一份？",
-    "role": "归来后的你",
-    "authority": "你决定自己的关系、住处与公开表态；亲近的人也有自己的决定。",
-    "options": [
-      {
-        "label": "A",
-        "text": "一封反复改写的道歉，旁边附着收信人搬走前留下的地址。",
-        "scores": [
-          1,
-          1,
-          0,
-          2,
-          1,
-          1
-        ],
-        "excerpt": "一封反复改写的道歉，旁边附着收信人搬走前留下的地址",
-        "summary": "容易被仍想送达的表达与未完的承诺吸引"
-      },
-      {
-        "label": "B",
-        "text": "一段没有寄出的解释，前后几页把同一件事讲得并不一样。",
-        "scores": [
-          1,
-          2,
-          -1,
-          -1,
-          0,
-          -1
-        ],
-        "excerpt": "一段没有寄出的解释，前后几页把同一件事讲得并不一样",
-        "summary": "会想追索细节怎样改变对一个人的判断"
-      },
-      {
-        "label": "C",
-        "text": "一张只写地址的空信封，里面没有任何正文。",
-        "scores": [
-          -1,
-          -1,
-          -1,
-          -2,
-          -1,
-          -1
-        ],
-        "excerpt": "一张只写地址的空信封，里面没有任何正文",
-        "summary": "有时愿意让没有说出的部分保留自己的空间"
-      },
-      {
-        "label": "D",
-        "text": "这几件都没让我想翻，先略过。",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ],
-        "excerpt": "这几件都没让我想翻，先略过",
-        "summary": "本题不提供偏好线索",
-        "neutral": true
-      }
-    ],
-    "type": "choice",
-    "id": "q16",
-    "stage": 2
-  },
-  {
-    "category": "bond",
-    "categoryLabel": "灯火归途",
-    "topic": "共同往事与新的机会",
-    "weight": 1,
-    "title": "旧日同伴合开的小书店要关门，邀你参加最后一晚。那晚也有一次能让你独立开展新计划的面谈。",
-    "context": "两边都不能改期。你不欠任何一方承诺，但这一晚确实只能留在一处。",
-    "role": "归来后的你",
-    "authority": "你决定自己的关系、住处与公开表态；亲近的人也有自己的决定。",
-    "options": [
-      {
-        "label": "A",
-        "text": "去书店参加最后一晚，放弃这次面谈；有些一起度过的日子值得亲自送别。",
-        "scores": [
-          1,
-          -1,
-          2,
-          1,
-          0,
-          2
-        ],
-        "excerpt": "去书店参加最后一晚，放弃这次面谈；有些一起度过的日子值得…",
-        "summary": "会为共同经历留下不可替代的位置，即使眼前机会因此离开"
-      },
-      {
-        "label": "B",
-        "text": "去面谈，接受错过书店的最后一晚；这次想先把自己的人生往前推。",
-        "scores": [
-          -1,
-          1,
-          -1,
-          -1,
-          1,
-          2
-        ],
-        "excerpt": "去面谈，接受错过书店的最后一晚；这次想先把自己的人生往前…",
-        "summary": "珍惜过去，也允许个人的新方向优先于一次共同告别"
-      }
-    ],
-    "type": "choice",
-    "id": "q17",
-    "stage": 2
-  },
-  {
-    "category": "personal",
-    "categoryLabel": "灯火归途",
-    "topic": "回到哪一扇门",
-    "weight": 1,
-    "title": "你可以回到旧宅，也可以在城外租新屋。旧宅保存着家人的物件，也让你想起当年想离开的理由。",
-    "context": "家人愿意替你留房；若你不回去，就会把旧宅出租一年。你准备怎样安顿自己？",
-    "role": "归来后的你",
-    "authority": "你决定自己的关系、住处与公开表态；亲近的人也有自己的决定。",
-    "options": [
-      {
-        "label": "A",
-        "text": "回旧宅，把物件一件件整理；接受往事会不断打断新生活。",
-        "scores": [
-          1,
-          0,
-          2,
-          -1,
-          2,
-          -1
-        ],
-        "excerpt": "回旧宅，把物件一件件整理；接受往事会不断打断新生活",
-        "summary": "愿意留在仍有牵挂的地方，慢慢处理无法立即收束的过去"
-      },
-      {
-        "label": "B",
-        "text": "在城外住下，只带走一箱物件；接受家人觉得我仍想与过去保持距离。",
-        "scores": [
-          -1,
-          -1,
-          -1,
-          -1,
-          -1,
-          1
-        ],
-        "excerpt": "在城外住下，只带走一箱物件；接受家人觉得我仍想与过去保持…",
-        "summary": "更想为下一段生活划出新的空间，同时接受旧关系的失望"
-      },
-      {
-        "label": "C",
-        "text": "先找三个月短租，再决定长住哪里；接受到时旧宅可能已租给别人。",
-        "scores": [
-          0,
-          2,
-          0,
-          0,
-          -1,
-          -2
-        ],
-        "excerpt": "先找三个月短租，再决定长住哪里；接受到时旧宅可能已租给别…",
-        "summary": "宁愿承担暂时没有归处的成本，也想让决定经得起更多时间"
-      }
-    ],
-    "type": "choice",
-    "id": "q18",
-    "stage": 2
-  },
-  {
-    "category": "cosmos",
-    "categoryLabel": "星海与圣杯",
-    "topic": "回音是否必要",
-    "weight": 0.9,
-    "title": "一份可靠的深空观测计划招募长期志愿者：每月几个夜晚，持续二十年，仍可能得不到遥远文明的回音。",
-    "context": "同样的时间也能投入身边一项长期服务。两边都能从头学起，但你只能长期承担一种。",
-    "role": "圣杯前的御主",
-    "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。",
-    "options": [
-      {
-        "label": "A",
-        "text": "加入深空计划；即使没有回音，向未知提出一次问题也值得。",
-        "scores": [
-          2,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "excerpt": "加入深空计划；即使没有回音，向未知提出一次问题也值得",
-        "summary": "愿意为超出眼前生活的可能投入无法保证回报的岁月"
-      },
-      {
-        "label": "B",
-        "text": "投入身边的长期服务，让二十年留下可以看见的改变。",
-        "scores": [
-          -2,
-          0,
-          1,
-          0,
-          0,
-          1
-        ],
-        "excerpt": "投入身边的长期服务，让二十年留下可以看见的改变",
-        "summary": "更想让有限的生命在具体的人与事上形成可触及的结果"
-      },
-      {
-        "label": "C",
-        "text": "先用两年核实计划依据，再决定；接受项目启动时名额已被别人接走。",
-        "scores": [
-          0,
-          2,
-          0,
-          0,
-          0,
-          -2
-        ],
-        "excerpt": "先用两年核实计划依据，再决定；接受项目启动时名额已被别人…",
-        "summary": "面对漫长承诺，会想先确认自己究竟在把岁月交给什么"
-      }
-    ],
-    "type": "choice",
-    "id": "q19",
-    "stage": 3
-  },
-  {
-    "category": "cosmos",
-    "categoryLabel": "星海与圣杯",
-    "topic": "知道结局以后",
-    "weight": 0.9,
-    "title": "一本书准确写下你过去的每个细节，最后一页却说十年后你会输掉最看重的斗争。",
-    "context": "中间十年全是空白。你无法证明未来不可改变，却已经为那场斗争准备多年。",
-    "role": "圣杯前的御主",
-    "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。",
-    "options": [
-      {
-        "label": "A",
-        "text": "继续原来的志向；即使失败，也不让最后一页替整段经历定价。",
-        "scores": [
-          2,
-          0,
-          0,
-          0,
-          2,
-          0
-        ],
-        "excerpt": "继续原来的志向；即使失败，也不让最后一页替整段经历定价",
-        "summary": "守住不由结局抹去的意义"
-      },
-      {
-        "label": "B",
-        "text": "离开旧路，试一条从未想过的方向；哪怕多年准备作废，也不替预言完成它。",
-        "scores": [
-          1,
-          0,
-          0,
-          0,
-          -2,
-          1
-        ],
-        "excerpt": "离开旧路，试一条从未想过的方向；哪怕多年准备作废，也不替…",
-        "summary": "主动打破预设安排"
-      },
-      {
-        "label": "C",
-        "text": "只安排未来一年能做成的事；接受自己可能离最初目标越来越远。",
-        "scores": [
-          -2,
-          0,
-          0,
-          0,
-          -1,
-          0
-        ],
-        "excerpt": "只安排未来一年能做成的事；接受自己可能离最初目标越来越远",
-        "summary": "把预言换回可掌握的生活"
-      }
-    ],
-    "type": "choice",
-    "id": "q20",
-    "stage": 3
-  },
-  {
-    "category": "cosmos",
-    "categoryLabel": "星海与圣杯",
-    "topic": "记忆是否可以延续",
-    "weight": 1,
-    "title": "一个装置能用旧记录，重建一位对你很重要的人的对话影像。它明确不是本人，也没有原来的意识。",
-    "context": "你可以随时关闭它。只是有些从未听过的回答，会由装置推算出来。你想怎样对待这份重建？",
-    "role": "圣杯前的御主",
-    "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。",
-    "options": [
-      {
-        "label": "A",
-        "text": "启用它，继续谈话；明知没有本人回应，也愿意让新的对话进入生活。",
-        "scores": [
-          1,
-          0,
-          2,
-          0,
-          -1,
-          1
-        ],
-        "excerpt": "启用它，继续谈话；明知没有本人回应，也愿意让新的对话进入…",
-        "summary": "能够承认关系已经改变，仍为新的相伴方式留出位置"
-      },
-      {
-        "label": "B",
-        "text": "只保留真实录音，不让它补出未说过的话；接受有些问题永远没有回答。",
-        "scores": [
-          0,
-          1,
-          0,
-          -1,
-          2,
-          -1
-        ],
-        "excerpt": "只保留真实录音，不让它补出未说过的话；接受有些问题永远没…",
-        "summary": "更愿意守住真实留下的部分，不用新的答案替代其边界"
-      },
-      {
-        "label": "C",
-        "text": "把记录封存，回到仍能彼此回应的人身边；接受一些细节会慢慢淡去。",
-        "scores": [
-          -1,
-          -1,
-          -1,
-          1,
-          -1,
-          2
-        ],
-        "excerpt": "把记录封存，回到仍能彼此回应的人身边；接受一些细节会慢慢…",
-        "summary": "可能用继续参与当下生活的方式承担不可挽回的失去"
-      }
-    ],
-    "type": "choice",
-    "id": "q21",
-    "stage": 3
-  },
-  {
-    "category": "attitude",
-    "categoryLabel": "星海与圣杯 · 个人态度",
-    "topic": "长久约定与改道",
-    "weight": 0.75,
-    "title": "比起随时保留改换方向的自由，我更看重一个能长期遵守的约定。",
-    "context": "这句话有多像你？",
-    "role": "圣杯前的御主",
-    "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。",
-    "options": [
-      {
-        "label": "1",
-        "text": "完全不像我",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          -2,
-          0
-        ],
-        "excerpt": "对「比起随时保留改换方向的自由，我更看重一个能长期遵守的约定。」：完全不像我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": -2
-      },
-      {
-        "label": "2",
-        "text": "大多不像我",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          -1.3333333333333333,
-          0
-        ],
-        "excerpt": "对「比起随时保留改换方向的自由，我更看重一个能长期遵守的约定。」：大多不像我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": -1.3333333333333333
-      },
-      {
-        "label": "3",
-        "text": "有点不像我",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          -0.6666666666666666,
-          0
-        ],
-        "excerpt": "对「比起随时保留改换方向的自由，我更看重一个能长期遵守的约定。」：有点不像我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": -0.6666666666666666
-      },
-      {
-        "label": "4",
-        "text": "一半像，一半不像",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ],
-        "excerpt": "对「比起随时保留改换方向的自由，我更看重一个能长期遵守的约定。」：一半像，一半不像",
-        "summary": "对这句话的认同程度",
-        "scaleValue": 0
-      },
-      {
-        "label": "5",
-        "text": "有点像我",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          0.6666666666666666,
-          0
-        ],
-        "excerpt": "对「比起随时保留改换方向的自由，我更看重一个能长期遵守的约定。」：有点像我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": 0.6666666666666666
-      },
-      {
-        "label": "6",
-        "text": "大多是我",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          1.3333333333333333,
-          0
-        ],
-        "excerpt": "对「比起随时保留改换方向的自由，我更看重一个能长期遵守的约定。」：大多是我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": 1.3333333333333333
-      },
-      {
-        "label": "7",
-        "text": "完全是我",
-        "scores": [
-          0,
-          0,
-          0,
-          0,
-          2,
-          0
-        ],
-        "excerpt": "对「比起随时保留改换方向的自由，我更看重一个能长期遵守的约定。」：完全是我",
-        "summary": "对这句话的认同程度",
-        "scaleValue": 2
-      }
-    ],
-    "type": "scale",
-    "statement": "比起随时保留改换方向的自由，我更看重一个能长期遵守的约定。",
-    "id": "q22",
-    "stage": 3
-  },
-  {
-    "category": "cosmos",
-    "categoryLabel": "星海与圣杯",
-    "topic": "向未知留下什么",
-    "weight": 1,
-    "title": "一艘探测船将把来自地球的记录送入深空。你能上传属于自己的十分钟，之后再无补寄的机会。",
-    "context": "你不知道谁会看到，也不会收到回信。这有限的十分钟，想替人类留下哪一部分？",
-    "role": "圣杯前的御主",
-    "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。",
-    "options": [
-      {
-        "label": "A",
-        "text": "讲一次人类犯下的错误，以及后来怎样试着补救；不只留下好看的自己。",
-        "scores": [
-          1,
-          2,
-          0,
-          2,
-          1,
-          1
-        ],
-        "excerpt": "讲一次人类犯下的错误，以及后来怎样试着补救；不只留下好看…",
-        "summary": "希望未来能看见责任如何被承担，而不是只继承胜利的形象"
-      },
-      {
-        "label": "B",
-        "text": "录下普通的一天：街声、饭桌、叫彼此名字的声音；先让陌生者遇见具体的人。",
-        "scores": [
-          -1,
-          0,
-          2,
-          1,
-          0,
-          0
-        ],
-        "excerpt": "录下普通的一天：街声、饭桌、叫彼此名字的声音；先让陌生者…",
-        "summary": "更相信具体生命的温度能够说明共同生活为何值得保存"
-      },
-      {
-        "label": "C",
-        "text": "留下我们还没解开的几个问题；不把这份记录写成已经完成的答案。",
-        "scores": [
-          2,
-          -1,
-          -1,
-          0,
-          -2,
-          1
-        ],
-        "excerpt": "留下我们还没解开的几个问题；不把这份记录写成已经完成的答…",
-        "summary": "愿意把未竟的追问交给未来，而不急于替它规定结论"
-      }
-    ],
-    "type": "choice",
-    "id": "q23",
-    "stage": 3
-  },
-  {
-    "category": "wish",
-    "categoryLabel": "星海与圣杯",
-    "topic": "唯一的圣杯愿望",
-    "weight": 0.9,
-    "title": "圣杯允许你实现一个愿望，不以伤害无辜或操纵他人意志为代价。",
-    "context": "愿望只有一次，不会顺带补回未选的遗憾。实现之后，生活仍由你与其他人各自选择。你会许下什么？",
-    "role": "圣杯前的御主",
-    "authority": "你决定如何使用圣杯，也决定愿望实现后怎样继续生活。",
-    "options": [
-      {
-        "label": "A",
-        "text": "让一处已毁的故乡恢复旧貌；人们是否回来，由他们决定。我把唯一的愿望留给这处地方。",
-        "scores": [
-          1,
-          0,
-          1,
-          -1,
-          2,
-          -1
-        ],
-        "excerpt": "让一处已毁的故乡恢复旧貌；人们是否回来，由他们决定。我把…",
-        "summary": "可能把奇迹交给仍然牵挂的归处，同时承认人不能被愿望召回"
-      },
-      {
-        "label": "B",
-        "text": "给自己多二十年健康时光，慢慢完成未竟之事；放下用这次愿望改变外部世界的机会。",
-        "scores": [
-          0,
-          1,
-          -1,
-          0,
-          1,
-          1
-        ],
-        "excerpt": "给自己多二十年健康时光，慢慢完成未竟之事；放下用这次愿望…",
-        "summary": "愿意珍惜个人尚未完成的生命，把延长的时间作为自己的责任"
-      },
-      {
-        "label": "C",
-        "text": "让一片荒地拥有稳定水源，往后的收成仍由当地人经营；我个人的遗憾保持原样。",
-        "scores": [
-          2,
-          1,
-          2,
-          -2,
-          0,
-          1
-        ],
-        "excerpt": "让一片荒地拥有稳定水源，往后的收成仍由当地人经营；我个人…",
-        "summary": "可能把一次改变留给后来者，让自己得不到的补偿成为它的边界"
-      },
-      {
-        "label": "D",
-        "text": "不使用圣杯；接受过去不能补回、未来仍会出错，也保留由自己一步步走下去的生活。",
-        "scores": [
-          -1,
-          0,
-          -1,
-          -1,
-          -2,
-          -1
-        ],
-        "excerpt": "不使用圣杯；接受过去不能补回、未来仍会出错，也保留由自己…",
-        "summary": "即使奇迹近在眼前，也可能更看重不由一个愿望收束的人生"
-      }
-    ],
-    "type": "choice",
-    "id": "q24",
-    "stage": 3
-  }
-];
+const QUESTIONS = questionBank;
 
 const SOURCES = [
   { label: 'Fate/stay night [Unlimited Blade Works] 官方角色页', url: 'https://www.fate-sn.com/ubw/chara/', type: 'fate' },
@@ -2141,8 +914,8 @@ const matchAnswers = createAffinityMatcher(QUESTIONS, SERVANTS);
  * Weighted, deterministic profile matching for an entertainment questionnaire.
  * Neutral cultural responses are omitted from both weighted totals and each
  * axis's attainable range. They are not evidence for a middle/low personality.
- * Core questions and attitude scales use their declared weights; cultural
- * choices contribute only supplementary, lower-weight signals.
+ * Value choices use their declared weights. Behavioral preferences and the
+ * concrete wish contribute separately; aesthetic choices do not affect affinity.
  * A resonance index measures calibrated direction distance, not probability.
  * @param {number[]} answers One valid option index for each question in the bank.
  */
@@ -2169,229 +942,39 @@ function calculateResult(answers) {
     return Math.max(0, Math.min(100, Math.round(100 * (totals[axis] - min) / (max - min))));
   });
   const { ranked, weakSignal } = matchAnswers(answers);
-  const best = ranked[0].servant;
 
-  const tendencies = {
-    "vision": [
-      "优先权衡实际存续与可实现的结果",
-      "愿意为不可轻易让渡的信念承担代价"
-    ],
-    "strategy": [
-      "倚重现场感受与直接判断",
-      "先核实证据、推演条件与后果"
-    ],
-    "bond": [
-      "保留个人裁决和自主去留的边界",
-      "重视共同承担与同行者的意愿"
-    ],
-    "presence": [
-      "倾向在幕后或私下承担立场",
-      "愿意在众人面前公开表明立场"
-    ],
-    "order": [
-      "愿意变更既有安排、重订效忠关系",
-      "重视誓约、制度与可依赖的约束"
-    ],
-    "resolve": [
-      "愿意付出等待代价，以保留判断余地",
-      "愿意尽快行动并承担决断的风险"
-    ]
-  };
-  const characterLinks = {
-    "artoria": {
-      "vision": "阿尔托莉雅将王的责任置于个人安危之前；认定值得守护的秩序，就愿意承担长久代价。",
-      "order": "阿尔托莉雅看重誓约维系的信任；局势越动荡，她越不愿让承诺随一时利害改变。",
-      "resolve": "阿尔托莉雅不会把王的责任留在宣言里；需要有人迎向战线时，她愿意先承担风险。"
-    },
-    "emiya": {
-      "strategy": "卫宫习惯先计算战场条件与后果；比起宏亮的保证，他更相信经过准备、能够执行的方案。",
-      "presence": "卫宫很少把关切说成响亮誓言；他更愿意守住薄弱处，让旁人的行动有继续下去的余地。",
-      "resolve": "卫宫的怀疑不会让他停在旁观者的位置；看见有人需要援手，他仍会亲自把事情做完。"
-    },
-    "cu": {
-      "strategy": "库·丘林倚重实战磨出的直觉；局势突变时，他更相信亲眼所见和当场作出的判断。",
-      "order": "库·丘林重视战士自身的准则，却不迷信僵硬部署；目标清楚后，他需要临机应变的余地。",
-      "resolve": "库·丘林面对强敌很少拖延试探；既然接受这场战斗，就会踏入交锋，用行动回应挑战。"
-    },
-    "medusa": {
-      "bond": "美杜莎的忠诚常落在具体的人身上；比起替宏大旗号争胜，她更在意珍视之人能否留下。",
-      "presence": "美杜莎并不靠声势证明立场；她习惯压住自己的感受，在必要时以守护和行动表明选择。",
-      "order": "美杜莎不会只凭规则判断一段关系；当旧有安排伤害重要的人，她会为守护留下变通余地。"
-    },
-    "medea": {
-      "vision": "美狄亚的愿望不只属于宏大的胜负；经历背叛后，能由自己选择的安稳归处同样重要。",
-      "strategy": "美狄亚善于看穿术式与契约的缝隙；面对悬殊局势，她更愿意凭准备与谋略改写条件。",
-      "order": "美狄亚不会把既有契约当成不可触碰的终点；遭遇不利规则时，她会寻找拆解与重订的可能。"
-    },
-    "kojiro": {
-      "bond": "小次郎不急着把胜负纳入众人的事业；与其追逐庞大阵营，他更珍惜独立磨炼的一战。",
-      "presence": "小次郎的从容不需要军旗与喝彩来证明；他把尊严留在持剑的姿态与面对对手的分寸之中。",
-      "strategy": "小次郎的剑术来自磨炼后的身体领会；交锋一瞬，他相信眼前的破绽胜过纸上的推演。"
-    },
-    "heracles": {
-      "bond": "赫拉克勒斯的力量并非只为展示强大；对伊莉雅的守护，让他在狂化之中仍显出明确牵挂。",
-      "resolve": "赫拉克勒斯以承受和进击回应危局；当同伴身前需要一道屏障，他不会把位置留给空话。",
-      "strategy": "赫拉克勒斯更以磨炼出的战斗本能应敌；面对逼近的威胁，身体的反应往往先于复杂解释。"
-    },
-    "gilgamesh": {
-      "presence": "吉尔伽美什不隐藏王的自负与判断；面对分歧，他宁愿公开宣示尺度，也不以迎合换取认同。",
-      "bond": "吉尔伽美什习惯保有裁决的自主权；能与他相处的关系，需要承受彼此独立的意志。",
-      "resolve": "吉尔伽美什认定目标值得出手后，就不甘只作远处的评判者；他的决断带着强烈主动性。"
-    },
-    "iskandar": {
-      "bond": "伊斯坎达尔把征途看作众人共同奔赴的事业；愿望的分量，也来自愿意与他并肩前行的人。",
-      "presence": "伊斯坎达尔愿意把野心与喜悦坦然说出；他用鲜明的个人意志，让旁人看见共同前进的方向。",
-      "resolve": "伊斯坎达尔的征服欲总与出发相连；与其等待一切完备，他更愿意率先迈入未知的战场。"
-    },
-    "hassan": {
-      "strategy": "咒腕哈桑依靠情报、隐蔽与出手时机完成任务；悬殊的正面对抗，更让他重视准备的价值。",
-      "presence": "咒腕哈桑不需要站在胜利的正中央；守住隐秘位置、完成关键一击，同样能够承担责任。",
-      "order": "咒腕哈桑珍视接下任务后的责任边界；明确的目标与约定，能让他的隐秘行动有可靠依托。"
-    },
-    "lancelot": {
-      "bond": "兰斯洛特的武艺始终与骑士的效忠相连；深重的愧疚，也来自他无法轻易放下的关系与誓言。",
-      "presence": "兰斯洛特很难用言辞化解自身的矛盾；那些未能说尽的忠诚与悔恨，往往压进沉默的战斗。",
-      "resolve": "兰斯洛特擅长将手边武器化成突破的力量；一旦投入交锋，他的承担首先表现为直接行动。"
-    },
-    "mash": {
-      "bond": "玛修的成长离不开与伙伴同行的经历；她所守护的不是抽象战果，而是共同走过旅途的人。",
-      "presence": "玛修的坚定未必伴随激昂宣言；她更愿意认真倾听，再用站到同伴身前的行动表达立场。",
-      "order": "玛修把受托的守护看得郑重；知道彼此要保护什么，能让她在动荡战局里仍握住行动的依据。"
-    },
-    "jeanne": {
-      "vision": "贞德将行动寄托于信念与使命；即使无法保证胜利，她仍愿意为所相信的事承担质疑与苦难。",
-      "bond": "贞德的坚持并不只指向个人荣誉；让身旁的人能够继续前行，也是她举起旗帜的重要意义。",
-      "order": "贞德看重自己许下的承诺与信仰；处境越艰难，她越需要以稳定的准则决定下一步如何承担。"
-    },
-    "merlin": {
-      "strategy": "梅林习惯从更远处观察局势与人的可能；他擅长铺陈条件，让关键人物在合适时刻作出选择。",
-      "order": "梅林并不总以现成规制约束行动；面对尚未定形的未来，他更愿意给变化与意外留出位置。",
-      "resolve": "梅林常选择观察、引导而非立刻亲自决战；他看重时机，让局势发展到能够转向的节点。"
-    },
-    "scathach": {
-      "strategy": "斯卡哈看重经受实战检验的技艺；她的严厉训练，指向对弱点、时机与致命一击的准确把握。",
-      "bond": "斯卡哈尊重能够独自站稳的战士；师徒之间的认可，来自彼此实力与意志，而非一味依附。",
-      "resolve": "斯卡哈不会用迟疑掩饰对战斗的判断；面对值得交锋的对手，她愿意亲自试出力量的边界。"
-    },
-    "arash": {
-      "vision": "阿拉什不必用王权与荣耀证明一箭的意义；能让争斗停下、让人活着回去，就是足够具体的愿望。",
-      "bond": "阿拉什的强大与同伴能否生还紧密相连；他愿意把个人的力量，放进众人共同的生路之中。",
-      "resolve": "阿拉什面对必须结束的战局，会把决心落实为出手；那份果断同时要求认真看清行动的代价。"
-    },
-    "nero": {
-      "presence": "尼禄愿意让自己的热情、审美与意志被人看见；她期待回应，也以鲜明姿态争取众人的目光。",
-      "order": "尼禄并不满足于照着旧制扮演皇帝；她更愿意让个人判断进入规则，创造属于自己的表现方式。",
-      "resolve": "尼禄面对想争取的舞台很少甘于退让；她愿意亲自投入，让热情变成能够看见的行动。"
-    },
-    "waver": {
-      "strategy": "埃尔梅罗Ⅱ世擅长拆解复杂信息，找出可执行的步骤；他以分析和准备，补上力量差距的缺口。",
-      "presence": "埃尔梅罗Ⅱ世常在幕后承担推演与支援；不必成为战场焦点，也能以判断影响众人的去向。",
-      "order": "埃尔梅罗Ⅱ世重视情报的可靠性与分工的边界；明确的安排，使合作不必只靠一时勇气维持。"
-    },
-    "enkidu": {
-      "bond": "恩奇都把真正的联结看作相互承认的关系；身份和声望之外，能够并肩的信任更有分量。",
-      "presence": "恩奇都的平静并不等于没有立场；他能以安静的陪伴与明确的行动，回应重要之人的意志。",
-      "order": "恩奇都与大地相连的姿态带着柔韧；面对外在秩序，他更愿意依据关系与当下情势作出回应。"
-    },
-    "dantes": {
-      "strategy": "岩窟王的反抗并非只有愤怒；漫长囚禁与归来，使等待、辨识和安排成为他意志的一部分。",
-      "order": "岩窟王不愿承认压迫替自己写下的结局；当既有秩序成为牢笼，他会寻找挣脱与改写的可能。",
-      "resolve": "岩窟王把强烈意志化作向前的推进力；认定要走出的困境后，他不会只停在谴责与等待之中。"
-    },
-    "oberon": {
-      "strategy": "奥伯龙善于留意话语遮住的部分；面对堂皇叙事，他会从矛盾、动机与未说出口的内容寻找答案。",
-      "bond": "奥伯龙很难把自我完全交给集体期待；他的关系常带着距离，让亲近与拒绝同时存在。",
-      "order": "奥伯龙对被奉为当然的秩序抱有深刻怀疑；他更愿意揭开其裂缝，而非顺从既定的故事结局。"
-    },
-    "tamamo": {
-      "bond": "玉藻前看重能够亲手维系的亲密关系；比起遥远声名，她更愿意把力量用在所选择的伴侣身边。",
-      "presence": "玉藻前表达好意时往往直接而鲜明；她不满足于默默等待，而愿意让对方清楚感受到自己的心意。",
-      "order": "玉藻前会为珍视的关系调整做法；她重视相处中的实际回应，不把形式上的规矩看得高于一切。"
-    },
-    "musashi": {
-      "strategy": "宫本武藏相信亲身交锋得来的领会；面对未知的剑路，她更愿意以实战试探，而非只在观念中求解。",
-      "order": "宫本武藏的旅途不受固定流派与归属拘束；只要能继续磨炼，她愿意离开熟悉安排另寻道路。",
-      "resolve": "宫本武藏遇见值得挑战的对手时，常先以行动回应；突破的机会，要靠真正踏入交锋才能抓住。"
-    },
-    "holmes": {
-      "strategy": "福尔摩斯不满足于最顺耳的解释；他会追查细节与因果，让判断经得起证据而非声势的检验。",
-      "bond": "福尔摩斯需要保有独立推理的空间；与其随多数人仓促定论，他更愿意先完成自己的证据链。",
-      "order": "福尔摩斯不会因为结论出自权威就停止调查；当新线索与旧说冲突，他愿意重审整套解释。"
-    }
-  };
-  const fallbackLinks = {
-    vision: [`${best.name}也有先保全现实基础、再判断能承担什么的一面。`, `${best.name}也留着一些不愿轻易拿去交换的坚持。`],
-    strategy: [`${best.name}也愿意相信走到现场以后才有的判断。`, `${best.name}身上也有这种愿意多看一眼、多想一步的认真。`],
-    bond: [`${best.name}也需要一块能自己作决定的地方。`, `${best.name}也会把同行的人一起放进自己的选择里。`],
-    presence: [`${best.name}有些在意也不靠大声说出来，而是放在动作里。`, `${best.name}也愿意让别人清楚看见自己站在哪里。`],
-    order: [`${best.name}也不愿仅凭旧有命令决定全部效忠与去留。`, `${best.name}也认真对待已经说好的事。`],
-    resolve: [`${best.name}也有愿意再等一等、让答案慢慢落定的时候。`, `${best.name}也有机会来了就先迈出去的那股劲。`],
-  };
-  const candidates = active.map(({ q, i, answerIndex, selected }) => {
-    const signals = AXES.map((axis, axisIndex) => {
-      const value = selected.scores[axisIndex];
-      // A trait shared by every possible answer belongs to the scene, not the
-      // user's decision, and cannot serve as evidence for that trait.
-      if (value === 0 || !q.options.some(o => !o.neutral && o.scores[axisIndex] !== value)) return null;
-      const side = value > 0 ? 1 : 0;
-      const shared = best.profile[axisIndex] !== 50 && (best.profile[axisIndex] > 50 ? 1 : 0) === side;
-      const coherent = scores[axisIndex] !== 50 && (scores[axisIndex] > 50 ? 1 : 0) === side;
-      const gap = Math.abs(best.profile[axisIndex] - scores[axisIndex]);
-      return { axis, axisIndex, side, shared, coherent, gap,
-        strength: q.weight * (Math.abs(value) / 2) * ((coherent ? 5 : 0) + (shared && coherent ? 3 : 0) + 1 - gap / 100 + (shared && coherent && characterLinks[best.id]?.[axis.id] ? 0.35 : 0)),
-      };
-    }).filter(Boolean).sort((a, b) => b.strength - a.strength || a.axisIndex - b.axisIndex);
-    const signal = signals[0];
-    return {
-      questionId: q.id, questionIndex: i, category: q.category, categoryLabel: q.categoryLabel,
-      topic: q.topic, title: q.title, answerIndex, answerText: selected.text, excerpt: selected.excerpt,
-      weight: q.weight, neutral: false, ...signal,
-    };
-  }).filter(e => e.axis).sort((a, b) => b.strength - a.strength || a.questionIndex - b.questionIndex);
-
-  // Explain the user's overall direction before looking for a character likeness.
-  // A contrary answer remains a contextual difference, never positive proof.
-  const evidence = [];
-  const supportive = candidates.filter(e => e.shared && e.coherent);
-  const differences = candidates.filter(e => !e.shared && e.coherent);
-  const contextual = candidates.filter(e => !e.coherent);
-  const addEvidence = (pool, distinctDomains) => {
-    for (const candidate of pool) {
-      if (evidence.length === 3) break;
-      if (evidence.some(e => e.questionId === candidate.questionId || e.axis.id === candidate.axis.id)) continue;
-      if (distinctDomains && evidence.some(e => e.category === candidate.category)) continue;
-      evidence.push(candidate);
-    }
-  };
-  for (const pool of [supportive, differences, contextual]) {
-    addEvidence(pool, true);
-    addEvidence(pool, false);
-  }
-  const reasons = evidence.map(e => {
-    const quote = `你选了“${e.excerpt}”。`;
-    if (!e.coherent) {
-      return `${quote}这是一处具体情境下的取舍，不能只凭这一题概括你的倾向。`;
-    }
-    if (!e.shared) {
-      return `${quote}在这件事上，你和${best.name}未必会选同一条路；这份不同也被保留在结果里。`;
-    }
-    const link = characterLinks[best.id]?.[e.axis.id] || fallbackLinks[e.axis.id][e.side];
-    return `${quote}${link}${e.category === 'culture' ? '不过，这只是一点作品偏好的呼应，不会单凭这一题定下结果。' : ''}`;
-  });
+  const behavior = analyzeBehavior(QUESTIONS, answers);
+  const behavioral = rankBehavior(behavior, SERVANTS);
+  const behaviorWeight = 0.25 * behavioral.coverage;
+  const wishQuestionIndex = QUESTIONS.findIndex(q => q.category === 'wish');
+  const wishPriority = QUESTIONS[wishQuestionIndex]?.options[answers[wishQuestionIndex]]?.wishPriority;
+  const wishWeight = wishPriority ? 0.10 : 0;
+  const blended = ranked.map(item => {
+    const semanticSimilarity = 1 - 2 * item.distance ** 2;
+    const behaviorSimilarity = behavioral.ranked.find(row => row.id === item.servant.id)?.similarity || 0;
+    const traitSimilarity = (1 - behaviorWeight) * semanticSimilarity + behaviorWeight * behaviorSimilarity;
+    const similarity = (1 - wishWeight) * traitSimilarity + wishWeight * wishAffinity(item.servant.id, wishPriority);
+    return { ...item, distance: Math.sqrt(Math.max(0, 2 - 2 * similarity)) / 2 };
+  }).sort((a,b) => a.distance - b.distance || a.servant.id.localeCompare(b.servant.id, 'en'));
+  const matched = blended[0].servant;
+  const explanation = buildMatchExplanation(QUESTIONS, answers, { best: matched, scores, behavior }, AXES);
   return {
     modelVersion: MATCHING_VERSION,
     weakSignal,
     scores,
-    best,
-    runnersUp: ranked.slice(1, 3).map(item => item.servant),
-    resonance: Math.max(0, Math.min(100, Math.round(100 * (1 - ranked[0].distance)))),
-    nearTie: ranked.length > 1 && ranked[1].distance - ranked[0].distance < 0.01,
-    matchGap: ranked.length > 1 ? Math.round((ranked[1].distance - ranked[0].distance) * 1000) / 10 : null,
-    reasons,
-    evidence: evidence.map(({ axis, side, shared, coherent, gap, strength, ...item }) => ({
-      ...item, axisId: axis.id, axisName: axis.name, traitLabel: side ? axis.high : axis.low,
-      shared, coherent, supportive: shared && coherent, interpretation: tendencies[axis.id][side],
-    })),
+    behavior,
+    behaviorWeight,
+    wishPriority,
+    wishWeight,
+    wishAffinityNote: wishAffinity(matched.id, wishPriority) > 0
+      ? `这次愿望优先考虑${WISH_PRIORITIES[wishPriority]}，与本作对${matched.name}愿望侧面的解读有呼应。它只占匹配的一小部分，不代表整个人格。`
+      : `你这次优先考虑${WISH_PRIORITIES[wishPriority]}；这与本作对${matched.name}愿望侧面的解读不完全相同，保留这份差异。`,
+    best: matched,
+    runnersUp: blended.slice(1, 3).map(item => item.servant),
+    resonance: Math.max(0, Math.min(100, Math.round(100 * (1 - blended[0].distance)))),
+    nearTie: blended.length > 1 && blended[1].distance - blended[0].distance < 0.01,
+    matchGap: blended.length > 1 ? Math.round((blended[1].distance - blended[0].distance) * 1000) / 10 : null,
+    ...explanation,
   };
 }
 
@@ -2937,143 +1520,15 @@ return {generateMasterCode};
 })();</script>
   <script>const FateReading = (() => {
 const { AXES, QUESTIONS } = FateData;
+const { buildValueObservations } = FateExplanations;
 
-// These are descriptions of repeated choices, not claims about ability or a
-// psychological diagnosis. Character profiles never supply the user's reading.
-const DIRECTIONS = {
-  vision: [
-    ['先保全能够延续的现实', '你不止一次先权衡还能保住什么、接下来怎样继续。比起让一个原则自动决定全部代价，你更愿意照顾眼前仍有可能延续的人与局面。'],
-    ['有些界限，你不愿只按得失交换', '在不止一次需要付出代价的取舍里，你仍为自己认定的界限留了位置。结果是否有利，并没有成为你唯一采用的尺度。'],
-  ],
-  strategy: [
-    ['你会认真对待身处其中的判断', '有几次需要决定的时刻，你都更信任亲身感受与当场形成的判断。相比把每一处条件补齐，你愿意让眼前真实遇到的人与事参与决定。'],
-    ['先把关键条件弄清，再作判断', '你在不止一个问题里选择先核实依据、推演后果或整理安排。即使准备会付出时间，你仍希望知道自己究竟在承担什么。'],
-  ],
-  bond: [
-    ['为个人的决定保留边界', '你多次保留独立判断或各自去留的余地。共同的身份与期待没有自动代替个人作出决定，自己承担的部分也需要自己认领。'],
-    ['把同行者也放进决定里', '你多次让共同承担、彼此的处境或一起继续的可能进入选择。决定不只关乎自己能走到哪里，也关乎身边的人如何面对后果。'],
-  ],
-  presence: [
-    ['重要的立场，也可以留在私下', '你在几次需要回应的场合选择了私下交代、幕后支持或安静保留。比起让所有人立刻看见，你更在意这份表达实际交到谁手里。'],
-    ['愿意让别人知道你站在哪里', '你不止一次选择公开说明、具名承担或直接表达。需要回应分歧时，你愿意让自己的名字与判断一起出现在众人面前。'],
-  ],
-  order: [
-    ['旧安排失效时，愿意重新选择', '当既有命令或先前安排与你的判断冲突，你多次选择重订、退出或另找途径。保留重新决定去向的权利，对你有实际分量。'],
-    ['看重能够让人互相依赖的约定', '即使局面发生变化，你多次先维护已作出的约定、程序或责任边界。改变之前，你更愿意找到能够向自己与别人交代的依据。'],
-  ],
-  resolve: [
-    ['给决定留一点时间', '你多次接受等待本身的代价，来补足判断或厘清自己的回应。保留重新判断的余地，对你来说值得暂时让出一些先机。'],
-    ['愿意先作决定，再承担后果', '面对需要回应的局面，你多次选择立即作出取舍。即使条件仍不完备，你也愿意让行动开始，并认领随之而来的后果。'],
-  ],
-};
-
-const MIXED = {
-  vision: '你在一些问题里先守认定的界限，也在另一些问题里先保全现实中的存续。两边都不止出现一次；面对不同代价，你会换一种选择。',
-  strategy: '有的抉择里你先核实依据，有的时刻你更信任当场判断。两种做法都不止出现一次，这些回答不足以把你固定在直觉或筹划的任何一端。',
-  bond: '你有几次把共同承担放在前面，也有几次为个人决定保留边界。你并没有把所有关系都处理成同一种距离。',
-  presence: '你会公开具名表达，也会把一些重要回应留在私下。两种做法都在不同回答里出现，外显与内敛并不总由同一边占上风。',
-  order: '你愿意维护一些约定，也会在别的处境下重订旧安排。守住承诺与保留改道的权利，在这次回答里都占有位置。',
-  resolve: '你有立刻作出决定的回答，也有接受等待、暂缓表态的回答。面对不同处境，你会换一种选择，不能只用决断或审慎概括。',
-};
-
-function selectEvidence(signals, count, used = new Set()) {
-  const ordered = [...signals].sort((a, b) => b.strength - a.strength || a.questionIndex - b.questionIndex);
-  const picked = [];
-  const take = (preferUnused, preferDifferentStage) => {
-    for (const signal of ordered) {
-      if (picked.length >= count) return;
-      if (picked.some(e => e.questionIndex === signal.questionIndex)) continue;
-      if (preferUnused && used.has(signal.questionIndex)) continue;
-      if (preferDifferentStage && picked.some(e => e.stage === signal.stage)) continue;
-      picked.push(signal);
-    }
-  };
-  take(true, true);
-  take(true, false);
-  take(false, true);
-  take(false, false);
-  return picked;
-}
-
-function publicEvidence(signals) {
-  return signals.map(({ questionIndex, answerText }) => ({ questionIndex, answerText }));
-}
-
-/**
- * Return up to three readings supported by at least two actual core answers.
- * Opposite readings need two answers on each side. Aesthetic choices and zero
- * signals cannot become proof. Inputs and imported data remain untouched.
- */
+/** A player's reading comes only from answers; changing best cannot change it. */
 function buildAnswerReading(answers, result) {
-  if (!Array.isArray(answers) || answers.length !== QUESTIONS.length ||
-      !Array.isArray(result?.scores) || result.scores.length !== AXES.length ||
-      !result.scores.every(Number.isFinite) ||
-      !QUESTIONS.every((q, i) => Number.isInteger(answers[i]) && !!q.options[answers[i]])) return [];
-
-  const responses = QUESTIONS.map((q, questionIndex) => ({ q, questionIndex, answer: q.options[answers[questionIndex]] }))
-    .filter(({ q, answer }) => !answer.neutral && q.category !== 'culture' && q.weight >= 0.65);
-  const dominant = [];
-  const mixed = [];
-
-  AXES.forEach((axis, axisIndex) => {
-    const signals = responses.map(({ q, questionIndex, answer }) => {
-      const value = answer.scores[axisIndex];
-      if (!q.options.some(option => !option.neutral && option.scores[axisIndex] !== value)) return null;
-      return { questionIndex, answerText: answer.text, stage: q.stage, value, strength: Math.abs(value) * q.weight };
-    }).filter(signal => signal && Number.isFinite(signal.value) && Math.abs(signal.value) >= 0.6);
-    const negative = signals.filter(signal => signal.value < 0);
-    const positive = signals.filter(signal => signal.value > 0);
-    const sum = group => group.reduce((total, signal) => total + signal.strength, 0);
-    const negativeWeight = sum(negative), positiveWeight = sum(positive);
-    const totalWeight = negativeWeight + positiveWeight;
-    if (!totalWeight) return;
-    const positiveShare = positiveWeight / totalWeight;
-    const side = positiveShare >= 0.5 ? 1 : 0;
-    const chosen = side ? positive : negative;
-    const share = side ? positiveShare : 1 - positiveShare;
-    const score = result.scores[axisIndex];
-    const agreesWithScore = side ? score >= 58 : score <= 42;
-    if (chosen.length >= 2 && share >= 0.66 && agreesWithScore) {
-      dominant.push({ axisIndex, axis: axis.id, side, signals: chosen,
-        strength: Math.abs(score - 50) + 8 * Math.min(chosen.length, 4) });
-    }
-    if (negative.length >= 2 && positive.length >= 2 &&
-        Math.min(positiveShare, 1 - positiveShare) >= 0.28 && Math.abs(score - 50) <= 22) {
-      mixed.push({ axisIndex, axis: axis.id, negative, positive,
-        strength: Math.min(negativeWeight, positiveWeight) / totalWeight * 10 + Math.min(negative.length, positive.length) });
-    }
-  });
-
-  dominant.sort((a, b) => b.strength - a.strength || a.axisIndex - b.axisIndex);
-  mixed.sort((a, b) => b.strength - a.strength || a.axisIndex - b.axisIndex);
-  const readings = [], used = new Set(), axesUsed = new Set();
-  const addDominant = item => {
-    const evidence = selectEvidence(item.signals, 2, used);
-    if (evidence.length < 2) return;
-    const [title, text] = DIRECTIONS[item.axis][item.side];
-    readings.push({ title, text, evidence: publicEvidence(evidence) });
-    axesUsed.add(item.axis);
-    evidence.forEach(e => used.add(e.questionIndex));
-  };
-  const addMixed = item => {
-    if (axesUsed.has(item.axis)) return;
-    const evidence = [...selectEvidence(item.positive, 2, used), ...selectEvidence(item.negative, 2, used)];
-    if (evidence.length !== 4 || new Set(evidence.map(e => e.questionIndex)).size !== 4) return;
-    readings.push({ title: `${AXES[item.axisIndex].name}：面对不同处境，你会换一种选择`,
-      text: MIXED[item.axis], evidence: publicEvidence(evidence) });
-    axesUsed.add(item.axis);
-    evidence.forEach(e => used.add(e.questionIndex));
-  };
-  dominant.slice(0, 2).forEach(addDominant);
-  for (const item of mixed) {
-    if (readings.length >= (dominant.length ? 3 : 2)) break;
-    addMixed(item);
-  }
-  for (const item of dominant.slice(2)) {
-    if (readings.length === 3) break;
-    addDominant(item);
-  }
-  return readings;
+  if (!Array.isArray(result?.scores) || result.scores.length !== AXES.length ||
+      !result.scores.every(Number.isFinite)) return [];
+  return buildValueObservations(QUESTIONS, answers, AXES)
+    .sort((a, b) => b.strength - a.strength || a.axisIndex - b.axisIndex)
+    .slice(0, 3);
 }
 
 return {buildAnswerReading};
@@ -3296,7 +1751,7 @@ function questionPanelHTML(index) {
   const { stage } = stageFor(index);
   const background = q.sourceUrl ? `<p class="question-source"><a href="${safeURL(q.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(q.sourceLabel)} ↗</a><span>${esc(q.backgroundType)}</span></p>` : '';
   const role=questionRoleHTML(q);
-  const response=q.type==='scale'?scaleResponseHTML(q,selected):`<div class="options" role="group" aria-label="选择你的回应">${q.options.map((option, i) => `<button class="option ${selected === i ? 'selected' : ''} ${option.neutral ? 'option-neutral' : ''}" data-action="answer" data-index="${i}" aria-pressed="${selected === i}"><span class="option-letter" aria-hidden="true">${String.fromCharCode(65 + i)}</span><span><strong>${esc(/^[A-Z]$/.test(option.label) ? option.text : option.label)}</strong>${option.text && !/^[A-Z]$/.test(option.label) ? `<small>${esc(option.text)}</small>` : ''}${option.neutral ? '<small>这题不计分</small>' : ''}</span><span class="option-check" aria-hidden="true"></span></button>`).join('')}</div>`;
+  const response=q.type==='scale'?scaleResponseHTML(q,selected):`<div class="options" role="group" aria-label="选择你的回应">${q.options.map((option, i) => `<button class="option ${selected === i ? 'selected' : ''} ${option.neutral ? 'option-neutral' : ''}" data-action="answer" data-index="${i}" aria-pressed="${selected === i}"><span class="option-letter" aria-hidden="true">${String.fromCharCode(65 + i)}</span><span><strong>${esc(/^[A-Z]$/.test(option.label) ? option.text : option.label)}</strong>${option.text && !/^[A-Z]$/.test(option.label) ? `<small>${esc(option.text)}</small>` : ''}${option.neutral ? '<small>略过这一处故事偏好</small>' : ''}</span><span class="option-check" aria-hidden="true"></span></button>`).join('')}</div>`;
   return `<div class="question-body question-panel ${q.type==='scale'?'question-panel-scale':''}" data-question-index="${index}" aria-busy="false"><div class="question-heading"><span class="question-shell-tag">${esc(q.topic || q.categoryLabel || CATEGORY_LABELS[q.category] || '你的选择')}</span><p class="stage-label">${esc(stage.en || '')} · ${String(index + 1).padStart(2, '0')}</p>${role}<h1 class="question-title" id="question-title" tabindex="-1">${esc(q.statement||q.title)}</h1>${q.context ? `<p class="question-context">${esc(q.context)}</p>` : ''}${background}</div>${response}</div>`;
 }
 
@@ -3543,9 +1998,21 @@ async function unveilServant() {
 
 function ensureResult() { if (!result && state.completed) result=calculateResult(state.answers); return result; }
 
+function evidenceLinksHTML(evidence, className='reading-trace') {
+  return evidence.map(e => `<button class="${className}" data-action="review-question" data-index="${e.questionIndex}"><span>第 ${e.questionIndex + 1} 题 ↗</span><q>${esc(e.answerText)}</q></button>`).join('');
+}
+function behavioralReadingHTML() {
+  const facets = result.behavior?.facets || [];
+  return `<section class="behavior-reading" aria-labelledby="behavior-heading"><h2 class="section-heading" id="behavior-heading"><small>HOW YOU APPROACH THINGS</small>你与人相处、处理事情的方式</h2><p class="small-note">每一项都对照两道具体情境；两次选择不同，就保留不同。</p><div class="behavior-grid">${facets.map(f => `<article class="reading-item" data-behavior-facet="${esc(f.id)}"><h3>${esc(f.label || f.name || f.id)}</h3><p>${esc(f.text || (f.side === null ? '你在这两种处境中作了不同选择，本次没有一致偏向。' : `在这两种处境里，你都更接近${f.traitLabel || (f.side > 0 ? f.high : f.low) || '同一种处理方式'}。`))}</p><div class="reading-evidence">${evidenceLinksHTML(f.evidence || [])}</div></article>`).join('')}</div></section>`;
+}
+function matchReasonsHTML() {
+  return result.reasonGroups?.length ? result.reasonGroups.map(group => `<li><strong>${esc(group.title)}</strong><p>${esc(group.text)}</p><div class="reason-evidence">${evidenceLinksHTML(group.evidence,'reason-trace')}${group.counterEvidence?.length ? `<p class="small-note">这些回答里也有不同的取舍：</p>${evidenceLinksHTML(group.counterEvidence,'reason-trace')}` : ''}</div></li>`).join('') : '<li>这次回答中，尚没有足够重复、同向的线索来解释具体共同点。可以结合下方的选择回顾阅读这次结果。</li>';
+}
 function personalReadingHTML() {
   const readings = buildAnswerReading(state.answers, result);
-  return `<section class="personal-reading" id="personal-reading" aria-labelledby="reading-heading"><h2 class="section-heading" id="reading-heading"><small>THE CHOICES YOU MADE</small>你在这些选择中的样子</h2>${readings.length ? `<div class="reading-list">${readings.map(reading => `<article class="reading-item"><h3>${esc(reading.title)}</h3><p>${esc(reading.text)}</p><ul class="reading-evidence">${reading.evidence.map(evidence => `<li><button class="reading-trace" data-action="review-question" data-index="${evidence.questionIndex}"><span>第 ${evidence.questionIndex + 1} 题 ↗</span>${QUESTIONS[evidence.questionIndex].type === 'scale' ? `<span class="reading-statement">${esc(QUESTIONS[evidence.questionIndex].statement || QUESTIONS[evidence.questionIndex].title)}</span>` : ''}<q>${esc(evidence.answerText)}</q></button></li>`).join('')}</ul></article>`).join('')}</div>` : '<p class="reading-empty">这次回答里，还没有足够重复的线索来概括你的倾向。可以先看看下面每个具体选择如何与英灵相遇。</p>'}</section>`;
+  const wish = QUESTIONS.findIndex(q => q.category === 'wish');
+  const selectedWish = wish >= 0 ? QUESTIONS[wish].options[state.answers[wish]] : null;
+  return `<section class="personal-reading" id="personal-reading" aria-labelledby="reading-heading"><h2 class="section-heading" id="reading-heading"><small>THE CHOICES YOU MADE</small>你在这些取舍中的优先项</h2>${readings.length ? `<div class="reading-list">${readings.map(reading => `<article class="reading-item"><h3>${esc(reading.title)}</h3><p>${esc(reading.text)}</p><div class="reading-evidence">${evidenceLinksHTML(reading.evidence)}</div></article>`).join('')}</div>` : '<p class="reading-empty">这些取舍还没有形成足够重复的线索，暂不作整体概括。</p>'}${selectedWish ? `<article class="reading-item wish-reading" data-wish-reading><h3>你把圣杯的愿望留给了什么</h3><p>${esc(selectedWish.inference || selectedWish.summary || selectedWish.text)}</p>${evidenceLinksHTML([{questionIndex:wish,answerText:selectedWish.text}])}<p class="small-note">${esc(result.wishAffinityNote || "这说明你在这一次愿望中优先想改变什么，不能单凭它判断你的品格或整个人格。")}</p></article>` : ''}</section>${behavioralReadingHTML()}<section class="taste-reading"><h2 class="section-heading"><small>STORY PREFERENCES</small>这一路你停留过的故事</h2><p class="small-note">以下仅回顾你的作品偏好，不作为人格或英灵匹配依据。</p><div class="reading-evidence">${evidenceLinksHTML(QUESTIONS.flatMap((q,i)=>q.category==='culture'&&!q.options[state.answers[i]].neutral?[{questionIndex:i,answerText:q.options[state.answers[i]].text}]:[])) || '<p class="small-note">这次你略过了三处作品偏好。</p>'}</div></section>`;
 }
 
 function questionInspirationHTML(q) {
@@ -3559,11 +2026,12 @@ function questionInspirationHTML(q) {
 function renderResult() {
   if(!ensureResult())return renderHome();
   const s=result.best;resultTab='fate';
-  setView('result',`<section class="shell result-shell" aria-labelledby="result-name"><div class="result-topline"><p class="eyebrow">SERVANT ACQUIRED / 灵基登录完成</p><button class="quiet-button" data-action="archive">灵基图鉴 ↗</button></div><div class="result-layout"><div class="summon-card rarity-${s.game?.rarity||1}" aria-label="${esc(s.class)}，${esc(s.name)}的从者卡">${portraitImage(s,'servant-portrait')}<div class="card-head"><span>${esc(s.class.toUpperCase())}</span>${classIcon(s.class)}</div><div class="card-name"><small>${esc(s.en.toUpperCase())}</small><strong>${esc(s.name)}</strong><div class="card-stars" aria-label="FGO初始稀有度${s.game?.rarity||1}星">${rarityStars(s)}</div><div class="card-version">FGO 初始灵基展示</div></div></div><div class="result-copy"><p class="stage-label">${esc(state.name||'旅人')}，与你最契合的英灵是</p><h1 id="result-name">${esc(s.name)}</h1><p class="english-name">${esc(s.en)} / ${esc(s.class)}</p><p class="result-lede">${esc(s.summary)}</p><blockquote class="contract-line">${esc(s.quote)}<small>契约注记 · 本作原创相性解读</small></blockquote><div class="resonance"><span class="resonance-number">${result.resonance}<small>/100</small></span><span class="resonance-copy"><strong>你与英灵 · 共鸣指数</strong><span>由你的选择形成，非游戏召唤概率</span></span></div><div class="result-actions"><button class="primary" data-action="share">保存召唤档案 <span class="arrow" aria-hidden="true">↓</span></button><button class="text-button" data-action="scroll-history">查看宝具与原型 ↘</button></div><div class="result-contract-hud">${commandSealSVG('seal')}<span>${QUESTIONS.length} 次选择，形成这次相遇<br>职阶：<strong>${esc(s.class)}</strong> · Fate 中的召唤类别</span></div></div></div><section class="history-panel" id="history-panel" aria-label="Fate灵基与历史原型"><div class="history-panel-nav" role="tablist" aria-label="档案类别"><p class="eyebrow">SERVANT / PROFILE</p><button class="tab" id="result-fate-tab" role="tab" aria-selected="true" aria-controls="result-lore-content" data-action="result-tab" data-tab="fate">Fate 人物档案</button><button class="tab" id="result-history-tab" role="tab" aria-selected="false" aria-controls="result-lore-content" data-action="result-tab" data-tab="history" tabindex="-1">历史与传说</button></div><div class="history-panel-content" id="result-lore-content" role="tabpanel" aria-labelledby="result-fate-tab">${loreContent(s,'fate')}</div></section><div class="insights"><section><h2 class="section-heading"><small>MASTER & SERVANT</small>为何与你共鸣</h2><ul class="reason-list">${result.reasons.map((reason,i)=>`<li>${esc(reason)}${result.evidence?.[i]?`<button class="reason-trace" data-action="review-question" data-index="${result.evidence[i].questionIndex}">回看第 ${result.evidence[i].questionIndex+1} 题 ↗</button>`:''}</li>`).join('')}</ul></section><section><h2 class="section-heading"><small>MASTER AFFINITY</small>你的选择倾向</h2>${radarSVG(result.scores)}<dl class="axis-endpoints">${AXES.map(a=>`<div><dt>${esc(a.name)}</dt><dd><span>${esc(a.low)}</span><span aria-hidden="true">↔</span><span>${esc(a.high)}</span></dd></div>`).join('')}</dl><p class="radar-legend">分数越高越接近右侧描述，仅表示倾向</p></section></div><div class="runner-heading"><h2 class="section-heading"><small>OTHER RESONANCES</small>也能感知到你呼唤的从者</h2></div><div class="runner-list">${result.runnersUp.map(p=>`<button class="runner-card" data-action="detail" data-id="${esc(p.id)}">${portraitImage(p,'runner-portrait','loading="lazy"')}<span><strong>${esc(p.name)}</strong><small>${esc(p.class)} · ${esc(p.title)}</small></span><span class="runner-arrow" aria-hidden="true">↗</span></button>`).join('')}</div><div class="result-bottom"><button class="quiet-button" data-action="review">← 回看并修改选择</button><button class="quiet-button" data-action="setup">重新测试，看看另一种自己 ↗</button></div></section>`);
+  setView('result',`<section class="shell result-shell" aria-labelledby="result-name"><div class="result-topline"><p class="eyebrow">SERVANT ACQUIRED / 灵基登录完成</p><button class="quiet-button" data-action="archive">灵基图鉴 ↗</button></div><div class="result-layout"><div class="summon-card rarity-${s.game?.rarity||1}" aria-label="${esc(s.class)}，${esc(s.name)}的从者卡">${portraitImage(s,'servant-portrait')}<div class="card-head"><span>${esc(s.class.toUpperCase())}</span>${classIcon(s.class)}</div><div class="card-name"><small>${esc(s.en.toUpperCase())}</small><strong>${esc(s.name)}</strong><div class="card-stars" aria-label="FGO初始稀有度${s.game?.rarity||1}星">${rarityStars(s)}</div><div class="card-version">FGO 初始灵基展示</div></div></div><div class="result-copy"><p class="stage-label">${esc(state.name||'旅人')}，与你最契合的英灵是</p><h1 id="result-name">${esc(s.name)}</h1><p class="english-name">${esc(s.en)} / ${esc(s.class)}</p><p class="result-lede">${esc(result.summary || "这次相遇来自你作出的具体选择。")}</p><blockquote class="contract-line">${esc(s.quote)}<small>契约注记 · 本作原创相性解读</small></blockquote><div class="resonance"><span class="resonance-number">${result.resonance}<small>/100</small></span><span class="resonance-copy"><strong>你与英灵 · 共鸣指数</strong><span>由你的选择形成，非游戏召唤概率</span></span></div><div class="result-actions"><button class="primary" data-action="share">保存召唤档案 <span class="arrow" aria-hidden="true">↓</span></button><button class="text-button" data-action="scroll-history">查看宝具与原型 ↘</button></div><div class="result-contract-hud">${commandSealSVG('seal')}<span>${QUESTIONS.length} 次选择，形成这次相遇<br>职阶：<strong>${esc(s.class)}</strong> · Fate 中的召唤类别</span></div></div></div><section class="history-panel" id="history-panel" aria-label="Fate灵基与历史原型"><div class="history-panel-nav" role="tablist" aria-label="档案类别"><p class="eyebrow">SERVANT / PROFILE</p><button class="tab" id="result-fate-tab" role="tab" aria-selected="true" aria-controls="result-lore-content" data-action="result-tab" data-tab="fate">Fate 人物档案</button><button class="tab" id="result-history-tab" role="tab" aria-selected="false" aria-controls="result-lore-content" data-action="result-tab" data-tab="history" tabindex="-1">历史与传说</button></div><div class="history-panel-content" id="result-lore-content" role="tabpanel" aria-labelledby="result-fate-tab">${loreContent(s,'fate')}</div></section><div class="insights"><section><h2 class="section-heading"><small>MASTER & SERVANT</small>为何与你共鸣</h2><ul class="reason-list">${matchReasonsHTML()}</ul></section><section><h2 class="section-heading"><small>MASTER AFFINITY</small>你的选择倾向</h2>${radarSVG(result.scores)}<dl class="axis-endpoints">${AXES.map(a=>`<div><dt>${esc(a.name)}</dt><dd><span>${esc(a.low)}</span><span aria-hidden="true">↔</span><span>${esc(a.high)}</span></dd></div>`).join('')}</dl><p class="radar-legend">分数越高越接近右侧描述，仅表示倾向</p></section></div><div class="runner-heading"><h2 class="section-heading"><small>OTHER RESONANCES</small>也能感知到你呼唤的从者</h2></div><div class="runner-list">${result.runnersUp.map(p=>`<button class="runner-card" data-action="detail" data-id="${esc(p.id)}">${portraitImage(p,'runner-portrait','loading="lazy"')}<span><strong>${esc(p.name)}</strong><small>${esc(p.class)} · ${esc(p.title)}</small></span><span class="runner-arrow" aria-hidden="true">↗</span></button>`).join('')}</div><div class="result-bottom"><button class="quiet-button" data-action="review">← 回看并修改选择</button><button class="quiet-button" data-action="setup">重新测试，看看另一种自己 ↗</button></div></section>`);
   const resultCopy=$('.result-copy');
   if(resultCopy){resultCopy.insertAdjacentHTML('afterbegin',resultMasterCodeHTML());resultCopy.querySelector(':scope > .stage-label').textContent='回应你召唤的英灵';}
-  if (result.weakSignal) $('.resonance').insertAdjacentHTML('afterend', '<p class="result-match-note">这些选择还没有形成鲜明的整体倾向。这次回应可以作为一种可能，也可以看看下方其他英灵。</p>');
+  if (result.weakSignal) $('.resonance').insertAdjacentHTML('afterend', '<p class="result-match-note">这次的六维取舍线索还不鲜明。这次回应可以作为一种可能，也可以看看下方其他英灵。</p>');
   else if (result.nearTie && result.runnersUp.length) $('.resonance').insertAdjacentHTML('afterend', `<p class="result-match-note">${esc(result.runnersUp[0].name)}也与你十分接近。这次相遇，还有另一种可能。</p>`);
+  if (result.differences?.length) $('.reason-list').insertAdjacentHTML('afterend', `<div class="match-differences"><h3>你们也有不同</h3>${result.differences.map(item => `<p>${esc(item.text)}</p>${evidenceLinksHTML(item.evidence || [],'reason-trace')}`).join('')}</div>`);
   const insights=$('.insights');const profile=$('#history-panel');if(insights&&profile)profile.before(insights);
   insights?.insertAdjacentHTML('beforebegin', personalReadingHTML());
 
@@ -3603,7 +2071,7 @@ function openDetail(id,tab='fate') {
 }
 
 function openAbout() {
-  openModal(`<p class="eyebrow">ABOUT THIS FAN PROJECT</p><h2>一次关于选择的召唤。</h2><p>「契约之刻」是以 Fate 系列为灵感的非官方同人互动。${QUESTIONS.length} 次选择，从历史、战争与誓约，走向爱情、命运与个人信念；情境、偏好与认同量表共同构成你的召唤线索。</p><ul class="about-list"><li><strong>如何匹配：</strong>历史战争情境与个人态度共同构成线索，三道审美题权重较轻；跳过的审美题不参与评分。量表中间项表示不偏向两端，计入已答。答案形成六维倾向，再与预设的英灵画像比较，结果会标出实际回答作为共鸣理由。姓名仅用于生成御主代号，不影响英灵匹配。相同答案得到相同结果；共鸣指数是本测试的相对适配评分，不是游戏抽卡概率、官方参数或心理学量表。</li><li><strong>如何读历史：</strong>档案分别标注历史、传说、神话、文学或原创人物。原型资料与 Fate 改编设定分开展示，提供进一步阅读的来源。存在史料争议的地方保留不确定性。</li><li><strong>你的数据：</strong>本页面不上传姓名或答案。进度仅保存在当前浏览器，清除网站数据后消失。资料链接会打开外部网站。</li><li><strong>关于作品：</strong>Fate 及相关角色属于各权利方。本作与 TYPE-MOON、Aniplex 等官方无关联。角色立绘采用FGO初始灵基卡面，经Atlas Academy公开资源整理并保留出处。召唤阵、令咒图形、卡背、触媒插图、音效、测试题和适配文案为本项目原创创作。无游戏账号登录或付费内容。</li></ul><hr class="modal-divider"><p class="small-note">作品资料入口：<a href="https://www.fate-sn.com/ubw/chara/" target="_blank" rel="noopener noreferrer">Fate/stay night</a> · <a href="https://www.fate-zero.jp/characters/" target="_blank" rel="noopener noreferrer">Fate/Zero</a> · <a href="https://www.fate-go.jp/trajectory/servant/" target="_blank" rel="noopener noreferrer">Fate/Grand Order</a></p><button class="text-button" data-action="clear-save">清除本浏览器中的测试进度</button>`);
+  openModal(`<p class="eyebrow">ABOUT THIS FAN PROJECT</p><h2>一次关于选择的召唤。</h2><p>「契约之刻」是以 Fate 系列为灵感的非官方同人互动。${QUESTIONS.length} 次选择，从历史、战争与誓约，走向爱情、命运与个人信念；情境、偏好与认同量表共同构成你的召唤线索。</p><ul class="about-list"><li><strong>如何匹配：</strong>历史战争情境与个人态度共同构成线索，三道审美题仅作故事偏好回顾，不参与评分。量表中间项表示不偏向两端，计入已答。具体取舍形成六维线索，另外八道情境题观察相处、信息、判断与安排方式。审美不参与人格或匹配。每条人格概括引用至少两道真实回答，回答相反时保留分歧；最后的愿望单独作为一个具体优先项，最多占总匹配的10%；不会将财富愿望解释成道德或能力，也不输出正式MBTI类型。姓名仅用于生成御主代号，不影响英灵匹配。相同答案得到相同结果；共鸣指数是本测试的相对适配评分，不是游戏抽卡概率、官方参数或心理学量表。</li><li><strong>行为题的参考：</strong>八道情境题参考MBTI讨论的四类偏好，但题目为本作原创，只描述两种场合下的选择，不确定正式四字母类型，也不测能力或道德。<a href="https://www.myersbriggs.org/my-mbti-personality-type/the-mbti-preferences/" target="_blank" rel="noopener noreferrer">偏好概念说明 ↗</a></li><li><strong>如何读历史：</strong>档案分别标注历史、传说、神话、文学或原创人物。原型资料与 Fate 改编设定分开展示，提供进一步阅读的来源。存在史料争议的地方保留不确定性。</li><li><strong>你的数据：</strong>本页面不上传姓名或答案。进度仅保存在当前浏览器，清除网站数据后消失。资料链接会打开外部网站。</li><li><strong>关于作品：</strong>Fate 及相关角色属于各权利方。本作与 TYPE-MOON、Aniplex 等官方无关联。角色立绘采用FGO初始灵基卡面，经Atlas Academy公开资源整理并保留出处。召唤阵、令咒图形、卡背、触媒插图、音效、测试题和适配文案为本项目原创创作。无游戏账号登录或付费内容。</li></ul><hr class="modal-divider"><p class="small-note">作品资料入口：<a href="https://www.fate-sn.com/ubw/chara/" target="_blank" rel="noopener noreferrer">Fate/stay night</a> · <a href="https://www.fate-zero.jp/characters/" target="_blank" rel="noopener noreferrer">Fate/Zero</a> · <a href="https://www.fate-go.jp/trajectory/servant/" target="_blank" rel="noopener noreferrer">Fate/Grand Order</a></p><button class="text-button" data-action="clear-save">清除本浏览器中的测试进度</button>`);
 }
 
 async function createShareCard() {
@@ -3628,11 +2096,11 @@ async function createShareCard() {
     ctx.font='21px Georgia';ctx.fillStyle=gold;ctx.fillText(`${s.class.toUpperCase()}  ${rarityStars(s)}`,540,827);
     ctx.fillStyle=paper;let nameSize=46;do{ctx.font=`${nameSize}px "Noto Serif SC","SimSun",serif`;if(ctx.measureText(s.name).width<510)break;nameSize-=2;}while(nameSize>24);ctx.fillText(s.name,540,890);ctx.font='italic 20px Georgia';ctx.fillStyle=gold;ctx.fillText(s.en,540,936,510);
     ctx.font='49px Georgia';ctx.fillStyle=gold;ctx.fillText(`${snapshot.resonance} / 100`,540,1050);ctx.font='20px "Microsoft YaHei",sans-serif';ctx.fillStyle=muted;ctx.fillText('你与英灵 · 共鸣指数',540,1087);
-    if(snapshot.weakSignal){ctx.font='17px "Microsoft YaHei",sans-serif';ctx.fillText('整体倾向尚不鲜明，这次回应只是一种可能',540,1115,880);}
+    if(snapshot.weakSignal){ctx.font='17px "Microsoft YaHei",sans-serif';ctx.fillText('六维取舍线索尚不鲜明，这次回应只是一种可能',540,1115,880);}
     else if(snapshot.nearTie&&snapshot.runnersUp.length){ctx.font='17px \"Microsoft YaHei\",sans-serif';ctx.fillText(`另一个接近的回应：${snapshot.runnersUp[0].name}`,540,1115,880);}
-    ctx.font='29px "Noto Serif SC","SimSun",serif';ctx.fillStyle=paper;wrapCanvas(ctx,s.summary,540,1146,880,39,2);
+    ctx.font='29px "Noto Serif SC","SimSun",serif';ctx.fillStyle=paper;wrapCanvas(ctx,snapshot.summary || '本次选择形成的一个可能回应。',540,1146,880,39,2);
     ctx.font='19px "Microsoft YaHei",sans-serif';ctx.fillStyle=gold;ctx.fillText('因何回应你的呼唤',540,1240);
-    ctx.font='25px "Microsoft YaHei",sans-serif';ctx.fillStyle=paper;wrapCanvas(ctx,snapshot.reasons[0],540,1288,880,36,3);
+    ctx.font='25px "Microsoft YaHei",sans-serif';ctx.fillStyle=paper;wrapCanvas(ctx,snapshot.shareReason || snapshot.reasons[0] || '尚无足够重复的共同线索，详细选择回顾见网页。',540,1288,880,36,3);
     ctx.strokeStyle=gold;ctx.globalAlpha=.35;ctx.beginPath();ctx.moveTo(125,1390);ctx.lineTo(955,1390);ctx.stroke();ctx.globalAlpha=1;
     ctx.fillStyle=gold;ctx.font='19px "Microsoft YaHei",sans-serif';ctx.fillText('FATE / 宝具',540,1435);ctx.fillStyle=paper;ctx.font='30px "Noto Serif SC","SimSun",serif';wrapCanvas(ctx,s.game?.npName||s.title,540,1480,880,38,2);
     ctx.fillStyle=gold;ctx.font='19px "Microsoft YaHei",sans-serif';ctx.fillText('历史与传说 / 原型档案',540,1575);ctx.fillStyle=muted;ctx.font='20px "Microsoft YaHei",sans-serif';wrapCanvas(ctx,`${s.origin.kind} · ${s.origin.era}`,540,1610,880,30,1);ctx.font='25px "Microsoft YaHei",sans-serif';wrapCanvas(ctx,s.origin.text,540,1656,880,34,3);
@@ -3694,7 +2162,7 @@ document.addEventListener('click', event => {
   if(action==='review-question'){
     const index=Number(target.dataset.index);if(!Number.isInteger(index)||index<0||index>=QUESTIONS.length)return;
     const q=QUESTIONS[index],answer=q.options[state.answers[index]];if(!answer)return;
-    openModal(`<p class="eyebrow">YOUR ANSWER / 第 ${index+1} 题</p>${questionRoleHTML(q)}<h2>${esc(q.statement||q.title)}</h2>${q.context?`<p>${esc(q.context)}</p>`:''}<div class="answer-trace"><small>${q.type==='scale'?'你选择的符合程度':'你当时的选择'}</small><p>${esc(answer.text||answer.label)}</p></div><p class="small-note">${q.category==='culture'?'这类偏好只作辅助参考，会与其他回答一起理解。':'这道回答与其他选择一起构成共鸣依据，不会单独决定结果。'}</p>${questionInspirationHTML(q)}<p class="small-note">想调整答案，可以在结果页底部选择“回看并修改选择”。</p>`);return;
+    openModal(`<p class="eyebrow">YOUR ANSWER / 第 ${index+1} 题</p>${questionRoleHTML(q)}<h2>${esc(q.statement||q.title)}</h2>${q.context?`<p>${esc(q.context)}</p>`:''}<div class="answer-trace"><small>${q.type==='scale'?'你选择的符合程度':'你当时的选择'}</small><p>${esc(answer.text||answer.label)}</p></div><p class="small-note">${q.category==='culture'?'这道审美选择不参与人格评分或英灵匹配。':'这道回答与其他选择一起构成共鸣依据，不会单独决定结果。'}</p>${questionInspirationHTML(q)}<p class="small-note">想调整答案，可以在结果页底部选择“回看并修改选择”。</p>`);return;
   }
   if(action==='review'){state.index=0;persist();return renderQuiz();}
   if(action==='share')return createShareCard();
